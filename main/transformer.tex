@@ -1,13 +1,38 @@
 \chapter{Semantics Transformer}\label{chapter:transformer}
+The adaptation of the functional correspondence into a semantics transformer was the main goal of this thesis.
+Although the two main transformations considered here are widely known, they are not presented in literature in a form directly applicable for the task.
+As the goal of the algorithm is to produce a definition of an abstract machine, to be read as a source code, care has to be taken to produce readable results.
+To this end I chose to allow for partial CPS translation, with functions which should be left alone marked with annotations.
+This approach allows one to specify helper functions whose control-flow is not particularly interesting to capture, such as environment lookups.
+The defunctionalization is presented as a manual transformation, with human-specified function spaces; or in a type directed fashion, where all functions of a particular type end up in the same bag.
+Neither of these approaches are satisfying for the purposes of a semantics transformer as the goal is to produce the result automatically and to uncover the operational properties of the evaluator.
+I also chose to allow for partial defunctionalization of programs, as it permits one to keep some parts of the machine abstract (e.g. functions modelling a heap or an environment).
+The partitioning of function spaces is done using results of control-flow analysis which approximates the runtime behavior of programs.
+This approach allows for functions of the same type to land in different spaces based on their usage in a program.
+Finally, as the transformation generates new variables and moves code around we have to keep them readable.
+Current implementation employs some heuristics and optional annotations to keep the names under control and inlines most of the introduced intermediate terms.
+In the remainder of this chapter I will describe the four stages of the transformation: translation to administrative normal form, selective translation to continuation-passing style, selective defunctionalization and let-inlining.
+I will also describe the algorithm used to compute the control-flow analysis.
+
+
 
 \section{Administrative Normal Form}
+The administrative normal form (ANF) \cite{flanagan-anf} is an intermediate representation for functional languages in which all intermediate results are let-bound to names.
+This shape greatly simplifies later transformations which concern control-flow as, from operational point of view, the only place where a continuation is grown is the let-binding.
+Additionally, for the same reason, a program in ANF is much easier to evaluate with an abstract machine which will be taken advantage of in Section \ref{sec:transformer-cfa}.
+The algorithm for transforming \emph{IDL} programs into ANF is presented in Figure \ref{fig:transformer-anf}
+\begin{figure}
+  \caption{ANF transformation for \textit{IDL}}
+  \label{fig:transformer-anf}
+\end{figure}
 
-\section{Control Flow Analysis}
+
+\section{Control Flow Analysis}\label{sec:transformer-cfa}
 The analysis most relevant to the task of deriving abstract machines from interpreters is the control flow analysis.
-Its objective is to find for each expression in a program an over-approximation of a set of functions it may evaluate to\cite{popa}.
+Its objective is to find for each expression in a program an over-approximation of a set of functions it may evaluate to \cite{popa}.
 This information can be used in two places: when determining whether a function and applications should be CPS transformed and for checking which functions an expression in operator position may evaluate to.
 There are a couple of different approaches to performing this analysis available in the literature: abstract interpretation \cite{popa}, (annotated) type systems \cite{popa} and abstract abstract machines \cite{aam}.
-I chose to employ the last approach as it allows for derivation of the control flow analysis from an abstract machine for the \IDL -- Interpreter Definition Language.
+I chose to employ the last approach as it allows for derivation of the control flow analysis from an abstract machine for \IDL{}.
 The derivation technique guarantees correctness of the resulting interpreter and hence provides high confidence in the actual implementation of the machine.
 I will summarize the derivation here but an interested reader should definitely acquaint themselves with the original work \cite{aam}.
 
@@ -15,6 +40,6 @@ I will summarize the derivation here but an interested reader should definitely 
 
 \section{Selective CPS}\label{sec:selective-cps}
 
-\section{Selective Defunctionalization}
+\section{Selective Defunctionalization}\label{sec:selective-defun}
 
 \section{Let Inlining}

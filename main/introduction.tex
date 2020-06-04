@@ -30,14 +30,47 @@ In Chapter \ref{chapter:transformer} I show the algorithmic characterization of 
 In Chapter \ref{chapter:evaluation} I discuss the performance of the tool and the related work.
 Appendices contain user's and developer's manual for the semantic transformer.
 
-\section{Interpreter Definition Language}
+\section{Interpreter Definition Language}\label{sec:idl}
 The \emph{Interpreter Definition Language} or \emph{IDL} is the meta-language used by \texttt{semt} -- a semantic transformer.
 It is a purely functional, higher-order, dynamically (strongly) typed language with strict evaluation order.
 It features named records and pattern matching which allow for convenient modelling of abstract syntax of the object-language as well as base types of integers, booleans and strings.
 The concrete syntax is in fully parenthesized form and the programs can be embedded in a \texttt{Racket} source file using the provided library with syntax definitions.
-As shown in Figure ???, a typical interpreter definition consists of several top-level functions which may be mutually recursive.
-The \texttt{main} function is treated as an entry point for the evaluator.
+As shown in Figure \ref{fig:lambda-calc-interp} a typical interpreter definition consists of several top-level functions which may be mutually recursive.
+The \lstinline!def-data! form introduces a datatype definition.
+In our case it defines a type for terms of \LC{} -- \lstinline!Term!.
+It is a union of three types: \lstinline!String!s representing variables of \LC{}; records with label \lstinline!Abs! and two fields of types \lstinline!String! and \lstinline!Term! representing abstractions; and records labeled \lstinline!App! which contain two \lstinline!Term!s and represent applications.
+A datatype definition may refer to itself, other previously defined datatypes and records and the base types of \lstinline!String!, \lstinline!Integer!, \lstinline!Boolean! and \lstinline!Any!.
+The \texttt{main} function is treated as an entry point for the evaluator and must have its arguments annotated with their type.
 
+The \lstinline!match! expression matches an expression against a list of patterns.
+Patterns may be variables (which will be bound to the value being matched), wildcards \lstinline!_!, base type patterns e.g. \lstinline![String x]! or record patterns e.g. \lstinline!{Abs x body}!.
+The \lstinline!fun! form introduces anonymous function, \lstinline!error "..."! stops execution and signals the error.
+Finally, application of a function is written as in \textit{Scheme} -- i.e. as a list of expressions (for example \lstinline!(eval init term)!).
+
+\begin{figure}
+    \centering
+    \begin{lstlisting}
+(def-data Term
+  String
+  {Abs String Term}
+  {App Term Term})
+
+(def init (x) (error "empty environment"))
+
+(def extend (env y v)
+  (fun (x) (if (eq? x y) v (env x))))
+
+(def eval (env term)
+  (match e
+    ([String x] (env x))
+    ({Abs x body} (fun (v) (eval (extend env x v) body)))
+    ({App fn arg} ((eval env fn) (eval env arg)))))
+        
+(def main ([Term term]) (eval init term))
+    \end{lstlisting}
+    \caption{A meta-circular interpreter for \LC{}}
+    \label{fig:lambda-calc-interp}
+\end{figure}
 
 \section{Semantic Formats}
 In this thesis I consider three widely recognized (TODO refs) semantic formats: denotational semantics, big-step operational semantics and abstract machines.
