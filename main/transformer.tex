@@ -1,0 +1,20 @@
+\chapter{Semantics Transformer}\label{chapter:transformer}
+
+\section{Administrative Normal Form}
+
+\section{Control Flow Analysis}
+The analysis most relevant to the task of deriving abstract machines from interpreters is the control flow analysis.
+Its objective is to find for each expression in a program an over-approximation of a set of functions it may evaluate to\cite{popa}.
+This information can be used in two places: when determining whether a function and applications should be CPS transformed and for checking which functions an expression in operator position may evaluate to.
+There are a couple of different approaches to performing this analysis available in the literature: abstract interpretation \cite{popa}, (annotated) type systems \cite{popa} and abstract abstract machines \cite{aam}.
+I chose to employ the last approach as it allows for derivation of the control flow analysis from an abstract machine for the \IDL -- Interpreter Definition Language.
+The derivation technique guarantees correctness of the resulting interpreter and hence provides high confidence in the actual implementation of the machine.
+I will summarize the derivation here but an interested reader should definitely acquaint themselves with the original work \cite{aam}.
+
+
+
+\section{Selective CPS}\label{sec:selective-cps}
+
+\section{Selective Defunctionalization}
+
+\section{Let Inlining}

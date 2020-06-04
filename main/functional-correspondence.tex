@@ -1,0 +1,249 @@
+\chapter{The Functional Correspondence}\label{chapter:functional-correspondence}
+The functional correspondence between evaluators and abstract machines is a technique for mechanical derivation of an abstract machine from a given evaluator.
+The technique was first characterized and described in \cite{functional-correspondence} and then later studied in context of various object-languages and their evaluators in (TODO more references).
+The input of the derivation is an evaluator written in some functional meta-language.
+It usually corresponds to a variant of denotational semantics (particularly in case of so-called meta-circular interpreters) or big-step operational semantics.
+The result of the derivation is a collection of mutually tail-recursive, first-order functions in the same meta-language.
+Program in such a form corresponds to an abstract machine.
+The different functions (with actual parameters) represent states of the machine, while the function calls specify the transition relation.
+
+The derivation consists of two program (in our case interpreter's) transformations: CPS transformation and defunctionalization.
+The first one exposes the control structure of the evaluator; the second replaces function values with first-order data structures and their applications with calls to a first-order global function.
+
+In the remainder of this chapter I will describe those transformations and illustrate their behavior using the running example of an evaluator for \LC.
+The abstract syntax and the corresponding meta-language records are shown in Figure \ref{fig:lambda-calc-stx}.
+The variables are represented as \lstinline!String!s of characters.
+We will begin with a standard meta-circular interpreter shown in Figure \ref{fig:lambda-calc-interp} and arrive at the CEK machine.
+Since every expression in \LC{} may only evaluate to a function, the values produced by the interpreter are represented as meta-language functions.
+The interpreter uses environments represented as partial functions from variables to values to handle binding of values to variables during application.
+The application in object-language is interpreted using application in meta-language so the defined language inherits call-by-value, left-to-right evaluation order.
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{r l r}
+      \LC & Representation & Name \\
+      \hline
+      $x$ & \lstinline!{Var String}! & Variable \\
+      $ \lambda x . e $ & \lstinline!{Fun String Expr}! & Abstraction \\
+      $ e \, e $ & \lstinline!{App Expr Expr}! & Application
+    \end{tabular}  
+  \end{center}
+  \caption{\LC{} syntax}
+  \label{fig:lambda-calc-stx}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{lstlisting}
+(def init (x) (error "empty environment"))
+
+(def extend (env x v)
+  (fun (y)  
+    (if (== x y)
+      v
+      (env y))))
+
+(def eval (e env)
+  (match e
+    ({Var x} (env x))
+    ({Fun x e} (fun (v) (eval e (extend env x v))))
+    ({App f e} ((eval f env) (eval e env)))))
+        
+(def main (e) (eval e init))
+    \end{lstlisting}
+    \caption{A meta-circular interpreter for \LC{}}
+    \label{fig:lambda-calc-interp}
+\end{figure}
+
+\section{Continuation-Passing Style}
+The first step towards building the abstract machine is capturing the control-flow characteristics of the defined language.
+We are interested in exposing the order in which the sub-expressions are evaluated and how the control is passed from function to function.
+Additionally, we would like the resulting program to define a transition system so we must require that every function call in the interpreter is a tail-call.
+It turns out that a program in continuation-passing style (CPS) exactly fits our requirements.
+
+What does it mean for a program to be in CPS?
+Let us begin by classifying expressions into trivial and serious ones.
+An expression is trivial if evaluating it always returns a value.
+Since we cannot in general decide whether an arbitrary expression is trivial we will use a safe approximation: an expression is trivial if it is a variable, a function definition, a primitive operation call or a structure constructor with only trivial expressions as sub-terms.
+We will only allow applications, case expressions and constructors with trivial sub-expressions.
+In order to retain ability to build interesting programs, every function should accept an additional argument -- a continuation which specifies what should be done next.
+
+After the transformation, the evaluation order of the defining language does not affect the evaluation order of the defined language so any control-flow characteristics must have become a part of the interpreter.
+Firstly let us think how evaluation order may affect the behavior of programs.
+The evaluation strategy determines when and how many times a sub-expression will be evaluated.
+Since the meta-language is almost pure the only observable effect is successful termination of programs.
+A program in CPS contains only trivial sub-expressions which always terminate, therefore it has the same termination properties regardless of the evaluation order.
+Additionally, the program contains only tail-calls.
+
+The interesting clauses of the algorithm for call-by-value CPS translation are presented in Figure \ref{fig:cps-translation}. The meta variables are typeset with italics (e.g., \textit{k}).
+The pieces of syntax use typewriter font (e.g., \texttt{k'}). The function $ \llbracket e \rrbracket k $ transforms an expression $e$ to continuation-passing-style using expression $k$ as a continuation.
+Whenever a new variable is introduced by the algorithm we will assume that it is fresh.
+The variable \texttt{x} is translated to application of continuation $k$ to \texttt{x}.
+To translate a function definition, first a fresh variable \texttt{k'} is generated then the body of the function is translated with \texttt{k'} as the continuation and finally, the continuation $k$ is applied to the transformed function expression.
+Function application is transformed by placing all sub-expressions in successively nested functions, with the deepest one actually performing the call with an additional argument -- the continuation $k$.
+This way the evaluation of arguments is sequenced left-to-right and happens before the application.
+Translation of the \texttt{match} expression requires translating the scrutinee and putting the branches in the continuation. The branches are all transformed using the same continuation $k$.
+Finally, during translation of the \texttt{error} expression the continuation is discarded since the error halts the execution.
+The omitted rules for \texttt{if} expressions and record creation are similar to \texttt{match} expressions and applications respectively.
+The top-level definitions are treated in the same way as anonymous functions with the exception of the \texttt{main} function.
+Since it is an entry-point to the interpreter we want to retain the original interface.
+We ensure it by translating its body with a final continuation that returns the value it was given.
+
+Figure \ref{fig:lambda-calc-interp-cps} shows the translated interpreter.
+It has been hand-optimized by reducing administrative redexes to improve readability.
+One approach to tackle this problem automatically is to check whether the sub-expression of an expression is already trivial and can be transformed using a simpler procedure.
+Another approach would be to perform automatic simplification after the transformation.
+Focusing back on the example, we can observe that the order of evaluation in applications is now explicit.
+We also ensured that the value lookup must succeed in order for evaluation to continue.
+A side effect of performing whole program transformation is the mixing of variable lookup in the environment with control-flow of the actual interpreter.
+The real implementation allows for selective CPS translation and is described in detail in Section \ref{sec:selective-cps}.
+\begin{figure}
+    \centering
+   \begin{align*}
+        \llbracket \texttt{x} \rrbracket k =& \texttt{(}k\,\texttt{x)}\\
+%
+        \llbracket \texttt{(fun (x y ...) e)} \rrbracket k
+        =& \texttt{(} k \, \texttt{(fun (x y ... k')}\, \llbracket \texttt{e} \rrbracket \texttt{k'))} \\
+%        
+        \llbracket \texttt{(}e_1\ldots e_n\texttt{)} \rrbracket k
+        =& \llbracket e_1 \rrbracket \, \texttt{(fun (v1)} \ldots \llbracket e_n \rrbracket k' \ldots \texttt{)}\, \\
+         & \text{where}\,k' = \texttt{(fun (vn) (v1...vn}\,k\texttt{))} \\
+%        
+        \llbracket \texttt{(case } e \texttt{(} p_1\,e_1\texttt{)}\ldots \texttt{(} p_n\,e_n\texttt{)} \rrbracket k
+        =& \llbracket e \rrbracket \texttt{(fun (v) (case v }ps \,\texttt{)}\\
+         & \text{where}\,ps = \texttt{(} p_1\,\llbracket e_1 \rrbracket k  \texttt{)}\ldots \texttt{(} p_n\,\llbracket e_n \rrbracket k \texttt{)}\\
+%
+        \llbracket \texttt{(error}\,s\,\texttt{)} \rrbracket k
+        =& \texttt{(error}\,s\,\texttt{)} \\
+%
+        \llbracket \texttt{(def main (x)}\,e\texttt{)}
+        =& \texttt{(def main (x)}\,\llbracket e \rrbracket \texttt{(fun (y) y)}\,\,\texttt{)}
+   \end{align*}
+    \caption{A call-by-value CPS translation}
+    \label{fig:cps-translation}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \begin{verbatim}
+(def init (x k) (error "empty environment"))
+
+(def extend (env x v k)
+  (k (fun (y k) (if (== x y) (k v) (env y k)))))
+
+(def eval (e env k)
+  (case e
+    ({var x} (env x k))
+    ({fun x e}
+     (k (fun (v k)
+          (extend env x v (fun (env') (eval e env' k))))))
+    ({app f e}
+     (eval f env (fun (f) (eval e env (fun (v) (f v k))))))))
+        
+(def main (e) (eval e init (fun (x) x)))
+    \end{verbatim}
+    \caption{An interpreter for \LC{} in CPS}
+    \label{fig:lambda-calc-interp-cps}
+\end{figure}
+
+\section{Defunctionalization}
+The second step is the elimination of higher order functions from our interpreter, transforming it into a collection of mutually (tail-)recursive functions -- a state machine with the \texttt{main} function building initial configuration.
+There are many approaches to compiling first class functions away but of particular interest to us will be defunctionalization.
+It is a global program transformation that replaces each anonymous function definition with a uniquely labeled record which holds the values for function's free variables.
+Every application of unknown function is replaced with a specific top-level \textit{apply} function which dispatches on the label of the passed record and evaluates the corresponding function's body.
+
+This simple description omits a few challenges and caveats which the implementer will face.
+Firstly, we require that the meta-language is able to distinguish between known and unknown function calls.
+Secondly, we must be able to create records for top-level definitions when they are passed as a first class function, e.g., in the definition of \texttt{eval} in the \texttt{var} case we apply an unknown function \texttt{env} which may evaluate either to an anonymous function created by \texttt{extend} or a top-level function \texttt{init}.
+Lastly, we must somehow know for each application point which functions may be applied.
+The first two challenges can be solved by smart design of the meta-language's semantics or interpreter.
+The other challenge is luckily solved using control flow analysis.
+
+\begin{figure}
+    \centering
+   \begin{align*}
+        \llbracket \texttt{(f}\,e_1\ldots e_n\texttt{)@l} \rrbracket
+        =& \texttt{(f}\,\llbracket e_1 \rrbracket \ldots \llbracket e_n \rrbracket \texttt{)}
+         & \text{when}\,\texttt{f}\,\text{is top-level}\\
+%
+        \llbracket \texttt{(}\,e_1\ldots e_n\texttt{)@l} \rrbracket
+        =& \texttt{(apply-l}\,\llbracket e_1 \rrbracket \ldots \llbracket e_n \rrbracket \texttt{)}
+         & \text{otherwise}\\
+%
+        \llbracket \texttt{(fun (x ...)}\,e_l\texttt{)@l} \rrbracket
+        =& \texttt{\{l y ...\}} & \\
+        %  & \text{where \texttt{y ...} are free variables} & \\
+%
+        \llbracket \texttt{f} \rrbracket
+        =& \texttt{\{lf\}} % & \\
+        %  & \text{where \texttt{lf} is the label of top-level function \texttt{f}} &
+   \end{align*}
+    \caption{Defunctionalization algorithm}
+    \label{fig:den-interp}
+    \begin{verbatim}
+(def apply-l (f x ...)
+  (case f
+    ({l-1 y-1 ...} e-1)
+    ...
+    ({l-n y-n ...} e-n)))
+   \end{verbatim}
+   \caption{Apply function template}
+    \label{fig:den-template}
+\end{figure}
+
+Figure \ref{fig:den-interp} depicts an overview of defunctionalization procedure with \textit{apply} functions generated according to the template in Figure \ref{fig:den-template}.
+We assume that every definition and expression in program has a unique label and that all generated names and structure labels are fresh. 
+Whenever a top-level function is called the application is transformed into top-level call with the sub-expressions transformed.
+Any other application is transformed into a call to \texttt{apply-l} where l is the application's label.
+Anonymous functions are transformed into a labeled record with the function's free variables as sub-expressions.
+Finally, references to top-level functions occurring in the program are transformed into labeled records.
+The template in Figure \ref{fig:den-template} is instantiated as follows:
+\begin{itemize}
+    \item \texttt{l} is a label of application expression for which \texttt{apply-l} is generated
+    \item \texttt{l-1} $\ldots$ \texttt{l-n} are labels of functions which may be applied in \texttt{l};
+    \item \texttt{x ...} are variables bound by these functions (notice that it requires renaming of bound variables)
+    \item (\texttt{y-1 ...}) $\ldots$ (\texttt{y-n ...}) are free variables of these functions
+    \item \texttt{e-1} \ldots \texttt{e-n} are already transformed bodies of these functions
+\end{itemize}
+It is worth noting that defunctionalization preserves the tail-call property of a program in CPS.
+
+Applying the defunctionalization procedure to the interpreter yields the definitions in Figure \ref{fig:defun-interp} having performed manual simplification and with carefully chosen names.
+We can see that environments form a linked list of pairs variable-value and that the \texttt{lookup} function (which is a generated \textit{apply} function) searches this list for the first matching variable.
+The defunctionalized continuations form a stack with \texttt{\{finish\}} at the bottom.
+The generated \texttt{continue} function pops a frame from that stack and continues execution.
+Evaluating function expression in defined language now produces a closure record which holds the environment and the name of the variable to be bound.
+The machine we obtained is similar to the CEK \cite{Felleisen} machine but with explicit handling of environment extension and lookup.
+\begin{figure}
+    \centering
+    \begin{verbatim}
+(def extend (env x v k)
+  (continue k {extend env x v}))
+
+(def lookup (env y k)
+  (case env
+    ({extend env x v}
+     (if (== x y) (continue k v) (lookup env y k)))
+    ({init} (error "empty environment"))))
+
+(def continue (k value)
+  (case k
+    ({eval-fun env e k} (eval e env {eval-app value k}))
+    ({eval-app f k} (apply f value k))
+    ({eval-body e k} (eval e value k))
+    ({finish} value)))
+
+(def apply (f v k)
+  (case f 
+    ({closure env x} (extend env x v {eval-body e k}))))
+
+(def eval (e env k)
+  (case e
+    ({var x}   (lookup env x k))
+    ({fun x e} (continue k {closure env x}))
+    ({app f e} (eval f env {eval-fun env e k}))))
+        
+(def main (e) (eval e {init} {finish}))
+    \end{verbatim}
+    \caption{A defunctionalized interpreter}
+    \label{fig:defun-interp}
+\end{figure}

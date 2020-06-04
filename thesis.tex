@@ -1,0 +1,42 @@
+\documentclass[english, mgr, shortabstract]{iithesis}
+
+\usepackage[backend=biber,sorting=nty,language=english]{biblatex}
+\usepackage{amsmath}
+\usepackage{stmaryrd}
+\usepackage{listings}
+% \usepackage{fira}
+
+\lstset{%
+  basicstyle=\ttfamily
+}
+
+\newcommand{\LC}{\(\lambda\)-calculus}
+\newcommand{\IDL}{IDL}
+
+\addbibresource{bibliography.bib}
+\DeclareFieldFormat[
+  article,inproceedings,incollection,book,misc,report]{title}{#1}
+
+\englishtitle{The Functional Correspondence Applied:\fmlinebreak An Implementation of a Semantics Transformer}
+
+\polishtitle{\dots}
+
+\advisor{dr hab. Dariusz Biernacki}
+
+\author{Maciej Buszka}
+
+\input{front/abstract-en.tex}
+\input{front/abstract-pl.tex}
+
+\begin{document}
+  \input{main/introduction.tex}
+  \input{main/functional-correspondence.tex}
+  \input{main/transformer.tex}
+  \input{main/evaluation.tex}
+
+  \appendix
+  \input{main/manual.tex}
+  \input{main/dev-manual.tex}
+
+  \printbibliography[heading=bibintoc]
+\end{document}

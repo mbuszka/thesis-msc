@@ -1,0 +1,78 @@
+\chapter{Introduction}\label{chapter:introduction}
+What is the meaning of a given computer program?
+
+The field of formal semantics of programming languages seeks to provide tools to answer such a question.
+Denotational semantics allow one to relate programs to mathematical objects which describe their behavior.
+Operational semantics provide means to characterize evaluation of programs by building a relation between programs and final values in case of big-step semantics; by defining a relation allowing for step-by-step transformation of programs in case of small-step semantics; or by specifying an abstract machine with a set of states and a transition function.
+These semantic formats all allow for systematic definition of programming languages but differ in style and type of reasoning as well as their limitations.
+
+Another approach is to provide an interpreter for the language in question (which I will call the \emph{object}-language) written in another language (to which I will refer as the \emph{meta}-language).
+These definitional interpreters \cite{reynolds} may also be classified into groups similar to the formal semantics.
+Starting with the most abstract and concise meta-circular interpreters which use meta-language constructs to interpret same constructs in object-language (e.g. using anonymous functions to model functional values, using conditionals for \textit{if} expressions).
+Via various evaluators with some constructs interpreted by simpler language features (e.g. with environments represented as lists or dictionaries instead of functions) but still relying on the evaluation order of the meta-language.
+And ending with a first-order machine-like interpreters which use an explicit stack for handling control-flow of the object-language.
+
+In his paper \cite{reynolds} Reynolds summarizes techniques which allow one to transform high-level definitional interpreters into lower-level ones using two well-known program transformations: transformation into continuation-passing style and defunctionalization.
+This connection between evaluators on different levels of abstraction has later been studied by Ager et al.\cite{functional-correspondence} who use it to relate several abstract machines for \LC{} with interpreters embodying their evaluation strategies and called it the functional correspondence.
+The technique has proven to be very useful for deriving a correct-by-construction abstract machine given an evaluator in a diverse set of languages \cite{functional-correspondence,biernacki-logic-engine,biernacka-delimited-continuations,ager-monadic-evaluators}.
+Despite these successes and its mechanical nature, the functional correspondence has not yet been transformed into a working tool which would perform the derivation automatically.
+
+Therefore it was my goal to give an algorithmic presentation of the functional correspondence and implement this algorithm in order to build a semantics transformer.
+In this thesis I describe all steps required to successfully convert the human-aided derivation into a computer algorithm for transforming evaluators into a representation of an abstract machine.
+In particular I characterize the control-flow analysis as the basis for both selective continuation-passing style transformation and partial defunctionalization.
+This algorithm has also been implemented in the \emph{Haskell} programming language giving raise to a tool --- \texttt{semt} --- performing the transformation.
+I evaluated the performance of the tool on multiple interpreters for a diverse set of programming language calculi.
+
+The rest of this thesis is structured as following:
+In the remainder of this chapter I introduce the \textit{Interpreter Definition Language} which is the meta-language accepted by the transformer and will be used in example evaluators throughout the thesis; I also compare the semantics formats with styles of interpreters to which they correspond.
+In Chapter \ref{chapter:functional-correspondence} I describe the functional correspondence and its constituents.
+In Chapter \ref{chapter:transformer} I show the algorithmic characterization of the correspondence.
+In Chapter \ref{chapter:evaluation} I discuss the performance of the tool and the related work.
+Appendices contain user's and developer's manual for the semantic transformer.
+
+\section{Interpreter Definition Language}
+The \emph{Interpreter Definition Language} or \emph{IDL} is the meta-language used by \texttt{semt} -- a semantic transformer.
+It is a purely functional, higher-order, dynamically (strongly) typed language with strict evaluation order.
+It features named records and pattern matching which allow for convenient modelling of abstract syntax of the object-language as well as base types of integers, booleans and strings.
+The concrete syntax is in fully parenthesized form and the programs can be embedded in a \texttt{Racket} source file using the provided library with syntax definitions.
+As shown in Figure ???, a typical interpreter definition consists of several top-level functions which may be mutually recursive.
+The \texttt{main} function is treated as an entry point for the evaluator.
+
+
+\section{Semantic Formats}
+In this thesis I consider three widely recognized (TODO refs) semantic formats: denotational semantics, big-step operational semantics and abstract machines.
+These formats make different trade-offs with respect to conciseness of definition, explicitness of specification of behavior of the object-language and power or degree of complication of the meta-language.
+I assume familiarity with these formats and the rest of this section should be treated as a reminder rather than an introduction.
+Nevertheless I will explain how these mathematical formalisms correspond to evaluators in a functional programming language.
+
+\subsection*{Denotational Semantics}
+In this format one has to define a mapping from program terms into meta-language objects (usually functions) which \emph{denote} those terms -- that is they specify their behavior.
+This mapping is usually required to be compositional -- i.e. the denotation of complex term is a composition of denotations of its sub-terms.
+Denotational semantics are considered to be the most abstract way to specify behavior of programs and can lead to very concise definitions.
+The drawback is that interesting language features such as loops and recursion require more complex mathematical theories to describe the denotations, in particular domain theory and continuous functions.
+In terms of interpreters, the denotational semantics usually correspond to evaluators that heavily reuse features of the meta-language in order to define the same features of object-language e.g. using anonymous functions to model functional values, using conditionals for if expressions, etc.
+This style of interpreters is sometimes called \textit{meta-circular} due to the recursive nature of language definition.
+On the one hand these definitional interpreters allow for intuitive understanding of object-language's semantics given familiarity with meta-language.
+On the other hand, the formal connection of such an interpreter with the denotational semantics requires formal definition of meta-language and in particular understanding of the domain in which denotations of meta-language programs live.
+Let us now turn to simple denotational semantics for an imperative language \textit{IMP}.
+
+\subsection*{Big-step Operational Semantics}
+The format of big-step operational semantics, also known as natural semantics allows for specification of behavior of programs using inference rules.
+These rules usually decompose terms syntactically and give rise to a relation between programs and values to which they evaluate.
+The fact of evaluation of a program to a value is proven by showing a derivation tree built using the inference rules.
+Non-terminating programs therefore have no derivation tree which makes this semantic-format ill-suited for describing divergent or infinite computations.
+The interpreters which correspond to big-step operational semantics usually have a form of recursive functions that are not necessarily compositional.
+The natural semantics may be non-deterministic and relate a program with many results.
+When turning nondeterministic semantics into an evaluator (in a deterministic programming language) one has to either change the formal semantics or model the nondeterminism explicitly.
+An example interpreter for \LC{} with call-by-name evaluation order is shown in Figure ???.
+
+
+\subsection*{Abstract Machines}
+An abstract machine is usually the most explicit definition of semantics of a language with all the details like argument evaluation order, term decomposition, environments and closures specified.
+The machine consists of a set of configurations (tuples), an injection of program into initial configuration, an extraction function of result from final configuration and a transition relation between configurations.
+The behavior of the machine then determines the behavior of the programs in object-language.
+As with big-step operational semantics, an abstract machine may be nondeterministic.
+Usually elements of the machine-state tuple are simple and first-order e.g. terms of the object-language, numbers, lists, etc.
+One way of encoding a deterministic abstract machine in a programming language is to define a function for each subset of machine states with similar structure.
+The exact state is determined by the actual parameters of the function at run-time.
+The bodies of these (mutually recursive) functions encode the transition function.

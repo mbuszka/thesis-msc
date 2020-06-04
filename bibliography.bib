@@ -1,0 +1,173 @@
+@InProceedings{one-step-at-a-time,
+  author="Vesely, Ferdinand and Fisher, Kathleen",
+  editor="Caires, Lu{\'i}s",
+  title="One Step at a Time",
+  booktitle="Programming Languages and Systems",
+  year="2019",
+  publisher="Springer International Publishing",
+  address="Cham",
+  pages="205--231",
+  abstract="Big-step and small-step are two popular flavors of operational semantics. Big-step is often seen as a more natural transcription of informal descriptions, as well as being more convenient for some applications such as interpreter generation or optimization verification. Small-step allows reasoning about non-terminating computations, concurrency and interactions. It is also generally preferred for reasoning about type systems. Instead of having to manually specify equivalent semantics in both styles for different applications, it would be useful to choose one and derive the other in a systematic or, preferably, automatic way.",
+  isbn="978-3-030-17184-1"
+}
+
+@inproceedings{ager-natural-semantics,
+author = {Ager, Mads},
+year = {2004},
+month = {08},
+pages = {245-261},
+title = {From Natural Semantics to Abstract Machines},
+volume = {3573},
+journal = {Lecture Notes in Computer Science},
+doi = {10.1007/11506676_16}
+}
+
+@inproceedings{refocusing,
+author = {Danvy, Olivier and Nielsen, Lasse},
+year = {2001},
+month = {01},
+pages = {},
+title = {Refocusing in Reduction Semantics},
+volume = {11},
+journal = {BRICS Report Series},
+doi = {10.7146/brics.v11i26.21851}
+}
+
+@inproceedings{reynolds,
+author = {Reynolds, John C.},
+title = {Definitional Interpreters for Higher-Order Programming Languages},
+year = {1972},
+isbn = {9781450374927},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/800194.805852},
+doi = {10.1145/800194.805852},
+booktitle = {Proceedings of the ACM Annual Conference - Volume 2},
+pages = {717–740},
+numpages = {24},
+keywords = {Interpreter, Language definition, LISP, Applicative language, Closure, PAL, J-operator, Order of application, Lambda calculus, GEDANKEN, Continuation, Programming language, Reference, SECD machine, Higher-order function},
+location = {Boston, Massachusetts, USA},
+series = {ACM ’72}
+}
+
+@inproceedings{functional-correspondence,
+author = {Ager, Mads Sig and Biernacki, Dariusz and Danvy, Olivier and Midtgaard, Jan},
+title = {A Functional Correspondence between Evaluators and Abstract Machines},
+year = {2003},
+isbn = {1581137052},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/888251.888254},
+doi = {10.1145/888251.888254},
+booktitle = {Proceedings of the 5th ACM SIGPLAN International Conference on Principles and Practice of Declaritive Programming},
+pages = {8–19},
+numpages = {12},
+keywords = {abstract machines, closure conversion, defunctionalization, interpreters, transformation into continuation-passing style (CPS)},
+location = {Uppsala, Sweden},
+series = {PPDP ’03}
+}
+  
+@book{popa,
+author = {Nielson, Flemming and Nielson, Hanne and Hankin, Chris},
+year = {1999},
+month = {01},
+pages = {},
+title = {Principles of Program Analysis},
+doi = {10.1007/978-3-662-03811-6}
+}
+
+@article{aam,
+author = {Van Horn, David and Might, Matthew},
+title = {Abstracting Abstract Machines},
+year = {2010},
+issue_date = {September 2010},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {45},
+number = {9},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/1932681.1863553},
+doi = {10.1145/1932681.1863553},
+journal = {SIGPLAN Not.},
+month = sep,
+pages = {51–62},
+numpages = {12},
+keywords = {abstract machines, abstract interpretation}
+}
+  
+@inproceedings{Felleisen,
+author = {Felleisen, Mattias and Friedman, D. P.},
+title = {A Calculus for Assignments in Higher-Order Languages},
+year = {1987},
+isbn = {0897912152},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/41625.41654},
+doi = {10.1145/41625.41654},
+booktitle = {Proceedings of the 14th ACM SIGACT-SIGPLAN Symposium on Principles of Programming Languages},
+pages = {314},
+numpages = {12},
+location = {Munich, West Germany},
+series = {POPL ’87}
+}
+
+@article{ager-call-by-need,
+title = "A functional correspondence between call-by-need evaluators and lazy abstract machines",
+journal = "Information Processing Letters",
+volume = "90",
+number = "5",
+pages = "223 - 232",
+year = "2004",
+issn = "0020-0190",
+doi = "https://doi.org/10.1016/j.ipl.2004.02.012",
+url = "http://www.sciencedirect.com/science/article/pii/S0020019004000638",
+author = "Mads Sig Ager and Olivier Danvy and Jan Midtgaard",
+keywords = "Functional programming, Program derivation, Interpreters, Abstract machines, Closure conversion, CPS transformation, Defunctionalization",
+abstract = "We bridge the gap between compositional evaluators and abstract machines for the lambda-calculus, using closure conversion, transformation into continuation-passing style, and defunctionalization of continuations. This article is a followup of our article at PPDP 2003, where we consider call by name and call by value. Here, however, we consider call by need. We derive a lazy abstract machine from an ordinary call-by-need evaluator that threads a heap of updatable cells. In this resulting abstract machine, the continuation fragment for updating a heap cell naturally appears as an ‘update marker’, an implementation technique that was invented for the Three Instruction Machine and subsequently used to construct lazy variants of Krivine's abstract machine. Tuning the evaluator leads to other implementation techniques such as unboxed values. The correctness of the resulting abstract machines is a corollary of the correctness of the original evaluators and of the program transformations used in the derivation."
+}
+
+@InProceedings{biernacki-logic-engine,
+author="Biernacki, Dariusz
+and Danvy, Olivier",
+editor="Bruynooghe, Maurice",
+title="From Interpreter to Logic Engine by Defunctionalization",
+booktitle="Logic Based Program Synthesis and Transformation",
+year="2004",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="143--159",
+abstract="Starting from a continuation-based interpreter for a simple logic programming language, propositional Prolog with cut, we derive the corresponding logic engine in the form of an abstract machine. The derivation originates in previous work (our article at PPDP 2003) where it was applied to the lambda-calculus. The key transformation here is Reynolds's defunctionalization that transforms a tail-recursive, continuation-passing interpreter into a transition system, i.e., an abstract machine. Similar denotational and operational semantics were studied by de Bruin and de Vink (their article at TAPSOFT 1989), and we compare their study with our derivation. Additionally, we present a direct-style interpreter of propositional Prolog expressed with control operators for delimited continuations.",
+isbn="978-3-540-25938-1"
+}
+
+@article{ager-monadic-evaluators,
+title = "A functional correspondence between monadic evaluators and abstract machines for languages with computational effects",
+journal = "Theoretical Computer Science",
+volume = "342",
+number = "1",
+pages = "149 - 172",
+year = "2005",
+note = "Applied Semantics: Selected Topics",
+issn = "0304-3975",
+doi = "https://doi.org/10.1016/j.tcs.2005.06.008",
+url = "http://www.sciencedirect.com/science/article/pii/S0304397505003439",
+author = "Mads Sig Ager and Olivier Danvy and Jan Midtgaard",
+keywords = "-calculus, Interpreters, Abstract machines, Closure conversion, Transformation into continuation-passing style (CPS), Defunctionalization, Monads, Effects, Proper tail recursion, Stack inspection",
+abstract = "We extend our correspondence between evaluators and abstract machines from the pure setting of the λ-calculus to the impure setting of the computational λ-calculus. We show how to derive new abstract machines from monadic evaluators for the computational λ-calculus. Starting from (1) a generic evaluator parameterized by a monad and (2) a monad specifying a computational effect, we inline the components of the monad in the generic evaluator to obtain an evaluator written in a style that is specific to this computational effect. We then derive the corresponding abstract machine by closure-converting, CPS-transforming, and defunctionalizing this specific evaluator. We illustrate the construction with the identity monad, obtaining the CEK machine, and with a lifted state monad, obtaining a variant of the CEK machine with error and state. In addition, we characterize the tail-recursive stack inspection presented by Clements and Felleisen as a lifted state monad. This enables us to combine this stack-inspection monad with other monads and to construct abstract machines for languages with properly tail-recursive stack inspection and other computational effects. The construction scales to other monads—including one more properly dedicated to stack inspection than the lifted state monad—and other monadic evaluators."
+}
+
+@article{biernacka-delimited-continuations,
+title={An Operational Foundation for Delimited Continuations in the CPS Hierarchy},
+volume={1},
+ISSN={1860-5974},
+url={http://dx.doi.org/10.2168/LMCS-1(2:5)2005},
+DOI={10.2168/lmcs-1(2:5)2005},
+number={2},
+journal={Logical Methods in Computer Science},
+publisher={Logical Methods in Computer Science e.V.},
+author={Biernacka, Malgorzata and Biernacki, Dariusz and Danvy, Olivier},
+editor={Wadler, Philip},
+year={2005},
+month={Nov}
+}
+
