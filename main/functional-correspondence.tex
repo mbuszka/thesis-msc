@@ -11,26 +11,12 @@ The derivation consists of two program (in our case interpreter's) transformatio
 The first one exposes the control structure of the evaluator; the second replaces function values with first-order data structures and their applications with calls to a first-order global function.
 
 In the remainder of this chapter I will describe those transformations and illustrate their behavior using the running example of an evaluator for \LC{} from Section \ref{sec:idl}.
-The abstract syntax and the corresponding meta-language records are shown in Figure \ref{fig:lambda-calc-stx}.
+Let us recall the previously described meta-circular interpreter of Figure \ref{fig:lambda-calc-interp}.
 The variables are represented as \lstinline!String!s of characters.
-We will begin with a standard meta-circular interpreter shown in Figure \ref{fig:lambda-calc-interp} and arrive at a variation of the CEK machine.
 Since every expression in \LC{} may only evaluate to a function, the values produced by the interpreter are represented as meta-language functions.
 The interpreter uses environments represented as partial functions from variables to values to handle binding of values to variables during application.
 The application in object-language is interpreted using application in meta-language so the defined language inherits call-by-value, left-to-right evaluation order.
-
-\begin{figure}
-  \begin{center}
-    \begin{tabular}{r l r}
-      \LC & Representation & Name \\
-      \hline
-      $x$ & \lstinline!String! & Variable \\
-      $ \lambda x . e $ & \lstinline!{Abs String Term}! & Abstraction \\
-      $ e \, e $ & \lstinline!{App Term Term}! & Application
-    \end{tabular}  
-  \end{center}
-  \caption{\LC{} syntax and its representation}
-  \label{fig:lambda-calc-stx}
-\end{figure}
+At the end of this chapter we shall arrive at the CEK machine.
 
 \section{Continuation-Passing Style}
 The first step towards building the abstract machine is capturing the control-flow characteristics of the defined language.
@@ -103,6 +89,8 @@ In Section \ref{sec:selective-cps} we will see a more complex transformation whi
 \begin{figure}
     \centering
 \begin{lstlisting}
+(def-data Term ...)
+
 (def eval (env term k)
   (match term
     ([String x] (k (env x)))
@@ -134,8 +122,7 @@ Secondly, we must be able to create records for top-level definitions when they 
 Lastly, we must somehow know for each application point which functions may be applied.
 The first two challenges can be solved with a static, syntactic analysis of the interpreter.
 The other challenge can be solved using control-flow analysis as described in Section \ref{sec:selective-defun}.
-For the purposes of this example we observe that there are two function spaces with anonymous functions: continuations and environments.
-The first is inhabited by th
+For the purposes of this example we observe that there are three function spaces with anonymous functions: continuations, representation of abstractions and environments.
 
 \begin{figure}
     \centering
@@ -185,43 +172,46 @@ The template in Figure \ref{fig:den-template} is instantiated as follows:
 \end{itemize}
 It is worth noting that defunctionalization preserves the tail-call property of a program in CPS.
 
-Applying the defunctionalization procedure to the interpreter yields the definitions in Figure \ref{fig:defun-interp} having performed manual simplification and with carefully chosen names.
-We can see that environments form a linked list of pairs variable-value and that the \texttt{lookup} function (which is a generated \textit{apply} function) searches this list for the first matching variable.
-The defunctionalized continuations form a stack with \texttt{\{finish\}} at the bottom.
-The generated \texttt{continue} function pops a frame from that stack and continues execution.
-Evaluating function expression in defined language now produces a closure record which holds the environment and the name of the variable to be bound.
-The machine we obtained is similar to the CEK \cite{Felleisen} machine but with explicit handling of environment extension and lookup.
+After applying the defunctionalization procedure to functions representing lambda abstractions and to continuations we obtain (again with a bit of manual cleanup) an encoding ot the CEK machine \cite{Felleisen} in Figure \ref{fig:abstract-machine-cek}. 
+It uses a stack \lstinline!Cont! (which are defunctionalized continuations) to handle the control-flow and \lstinline!Closure!s (which are defunctionalized lambda abstractions) to represent functions.
+The environment is left untouched and is still encoded as a partial function.
+The machine has two classes of states: \lstinline!eval! and \lstinline!continue!.
+In \lstinline!eval! mode the machine dispatches on the shape of the term and either switches to \lstinline!continue! mode when it has found a value (either a variable looked up in the environment or an abstraction) or pushes a new continuation onto the stack and evaluates the expression in function position.
+The \lstinline!continue! function is the \textit{apply} function generated by the defunctionalization procedure.
+In \lstinline!continue! mode the machine checks the continuation and proceeds accordingly: when it reaches the bottom of the continuation stack \lstinline!Halt! it returns the final value \lstinline!val!; when the continuation is \lstinline!App1! it means that \lstinline!val! holds the function value which will be applied once \lstinline!arg! is computed; the stack frame \lstinline!App2! signifies that \lstinline!val! holds the computed argument and the machine calls a helper function \lstinline!apply! (the second generated \textit{apply} function) to unpack the closure in \lstinline!fn! and evaluate the body of the closure in the extended environment. 
+
 \begin{figure}
-    \centering
-    \begin{verbatim}
-(def extend (env x v k)
-  (continue k {extend env x v}))
+\begin{lstlisting}
+(def-data Term ...)
 
-(def lookup (env y k)
-  (case env
-    ({extend env x v}
-     (if (== x y) (continue k v) (lookup env y k)))
-    ({init} (error "empty environment"))))
+(def-data Cont
+  {Halt}
+  {App1 arg env cont}
+  {App2 fn cont})
 
-(def continue (k value)
-  (case k
-    ({eval-fun env e k} (eval e env {eval-app value k}))
-    ({eval-app f k} (apply f value k))
-    ({eval-body e k} (eval e value k))
-    ({finish} value)))
+(def-struct {Closure body env x})
 
-(def apply (f v k)
-  (case f 
-    ({closure env x} (extend env x v {eval-body e k}))))
+(def init (x) (error "empty environment"))
+(def extend (env k v) ...)
 
-(def eval (e env k)
-  (case e
-    ({var x}   (lookup env x k))
-    ({fun x e} (continue k {closure env x}))
-    ({app f e} (eval f env {eval-fun env e k}))))
-        
-(def main (e) (eval e {init} {finish}))
-    \end{verbatim}
-    \caption{A defunctionalized interpreter}
-    \label{fig:defun-interp}
+(def eval (env term cont)
+  (match term
+    ([String x] (continue cont (env x)))
+    ({Abs x body} (continue cont {Closure body env x}))
+    ({App fn arg} (eval env fn {App1 arg env cont}))))
+
+(def apply (fn v cont)
+  (let {Fun body env x} fn)
+  (eval (extend env x v) body cont))
+
+(def continue (cont val)
+  (match cont
+    ({Halt} val))
+    ({App1 arg env cont} (eval env arg {App2 val cont}))
+    ({App2 fn cont} (apply fn val cont)))
+
+(def main ([Term term]) (eval {Init} term {Halt}))
+\end{lstlisting}
+\caption{An encoding of the CEK machine for \LC{}}
+\label{fig:abstract-machine-cek}
 \end{figure}
