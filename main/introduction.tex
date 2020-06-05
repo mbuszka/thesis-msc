@@ -87,7 +87,9 @@ In terms of interpreters, the denotational semantics usually correspond to evalu
 This style of interpreters is sometimes called \textit{meta-circular} due to the recursive nature of language definition.
 On the one hand these definitional interpreters allow for intuitive understanding of object-language's semantics given familiarity with meta-language.
 On the other hand, the formal connection of such an interpreter with the denotational semantics requires formal definition of meta-language and in particular understanding of the domain in which denotations of meta-language programs live.
-Let us now turn to simple denotational semantics for an imperative language \textit{IMP}.
+The evaluator of Figure \ref{fig:lambda-calc-interp} is an example of the meta-circular approach.
+The $\lambda$-abstractions of object-language are represented directly as functions in meta-language which use denotations of lambda's bodies in extended environment.
+The \lstinline!eval! function is compositional -- the denotation of object level application is an application of denotations of function and argument expressions.
 
 \subsection*{Big-step Operational Semantics}
 The format of big-step operational semantics, also known as natural semantics allows for specification of behavior of programs using inference rules.
@@ -97,8 +99,56 @@ Non-terminating programs therefore have no derivation tree which makes this sema
 The interpreters which correspond to big-step operational semantics usually have a form of recursive functions that are not necessarily compositional.
 The natural semantics may be non-deterministic and relate a program with many results.
 When turning nondeterministic semantics into an evaluator (in a deterministic programming language) one has to either change the formal semantics or model the nondeterminism explicitly.
-An example interpreter for \LC{} with call-by-name evaluation order is shown in Figure ???.
+Let us now turn to a simple interpreter embodying the natural semantics for an imperative language \textit{IMP} shown in Figure \ref{fig:evaluator-imp}.
 
+\begin{figure}\label{fig:evaluator-imp}
+\begin{lstlisting}
+(def-data AExpr
+  String
+  ...)
+(def-data BExpr ...)
+(def-data Cmd
+  {Skip}
+  {Assign String AExpr}
+  {If BExpr Cmd Cmd}
+  {Seq Cmd Cmd}
+  {While BExpr Cmd})
+
+(def init-state (var) 0)
+(def update-state (tgt val state) ...)
+
+(def aval (state aexpr) ...) ; valuate arithmetic expression
+(def bval (state bexpr) ...) ; valuate boolean expression
+
+(def eval (state cmd)
+  (match cmd
+    ({Skip} state)
+    ({Assign var aexpr}
+      (update-state var (aval state aexpr) state))
+    ({If cond then else}
+      (if (bval state cond)
+        (eval state then)
+        (eval state else)))
+    ({Seq cmd1 cmd2}
+      (let state (eval state cmd1))
+      (eval state cmd2))
+    ({While cond cmd}
+      (if (bval state cond)
+        (eval (eval state cmd) {While cond cmd})
+        state))))
+
+(def main ([Cmd cmd])
+  (eval init-state cmd))
+\end{lstlisting}
+\caption{An interpreter for \textit{IMP} in the style of natural semantics}
+\end{figure}
+
+Datatypes \lstinline!AExpr!, \lstinline!BExpr! and \lstinline!Cmd! describe abstract syntax of arithmetic expressions, boolean expressions and commands.
+The expressions are pure, that is, evaluating them does not affect the state.
+The state is a function mapping variables represented as \lstinline!String!s to numbers, initially set to \lstinline!0! for every variable.
+Functions \lstinline!aval! and \lstinline!bval! valuate arithmetic and boolean expressions in a given state.
+The function \lstinline!eval! is a direct translation of big-step operational semantics for \textit{IMP}.
+It is not compositional in the \lstinline!While! branch, where \lstinline!eval! is called recursively on the same command it received.
 
 \subsection*{Abstract Machines}
 An abstract machine is usually the most explicit definition of semantics of a language with all the details like argument evaluation order, term decomposition, environments and closures specified.
@@ -109,3 +159,49 @@ Usually elements of the machine-state tuple are simple and first-order e.g. term
 One way of encoding a deterministic abstract machine in a programming language is to define a function for each subset of machine states with similar structure.
 The exact state is determined by the actual parameters of the function at run-time.
 The bodies of these (mutually recursive) functions encode the transition function.
+
+Figure \ref{fig:abstract-machine-cek} contains an interpreter corresponding to the CEK abstract machine for \LC{}.
+It has been obtained from the denotational semantics of Figure \ref{fig:lambda-calc-interp}.
+It uses a stack of continuations \lstinline!Cont! to handle the control-flow and \lstinline!Closure!s to represent functions.
+The machine has two classes of states: \lstinline!eval! and \lstinline!continue!.
+In the first state the machine dispatches on the shape of the term and either switches to \lstinline!continue! mode when it has found a value or pushes a new continuation onto the stack.
+In \lstinline!continue! mode the machine checks the continuation and proceeds accordingly: when it reaches the bottom of the continuation stack \lstinline!Halt! it returns the final value \lstinline!val!; when the continuation is \lstinline!App1! it means that \lstinline!val! holds the function value which will be applied once \lstinline!arg! is computed; the stack frame \lstinline!App2! signifies that \lstinline!val! holds the computed argument and the machine calls a helper function \lstinline!apply! to unpack the closure in \lstinline!fn! and evaluate the body of the closure in extended environment. 
+
+\begin{figure}
+\begin{lstlisting}
+(def-data Term
+  String
+  {Abs String Term}
+  {App Term Term})
+
+(def-data Cont
+  {Halt}
+  {App1 arg env cont}
+  {App2 fn cont})
+
+(def-struct {Closure body env x})
+
+(def init (x) (error "empty environment"))
+(def extend (env k v) ...)
+
+(def eval (env term cont)
+  (match term
+    ([String x] (continue cont (env x)))
+    ({Abs x body} (continue cont {Closure body env x}))
+    ({App fn arg} (eval env fn {App1 arg env cont}))))
+
+(def apply (fn v cont)
+  (let {Fun body env x} fn)
+  (eval (extend env x v) body cont))
+
+(def continue (cont val)
+  (match cont
+    ({Halt} val))
+    ({App1 arg env cont} (eval env arg {App2 val cont}))
+    ({App2 fn cont} (apply fn val cont)))
+
+(def main ([Term term]) (eval {Init} term {Halt}))
+\end{lstlisting}
+\caption{An encoding of the CEK machine for \LC{}}
+\label{fig:abstract-machine-cek}
+\end{figure}

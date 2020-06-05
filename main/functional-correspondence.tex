@@ -13,7 +13,7 @@ The first one exposes the control structure of the evaluator; the second replace
 In the remainder of this chapter I will describe those transformations and illustrate their behavior using the running example of an evaluator for \LC{} from Section \ref{sec:idl}.
 The abstract syntax and the corresponding meta-language records are shown in Figure \ref{fig:lambda-calc-stx}.
 The variables are represented as \lstinline!String!s of characters.
-We will begin with a standard meta-circular interpreter shown in Figure \ref{fig:lambda-calc-interp} and arrive at the CEK machine.
+We will begin with a standard meta-circular interpreter shown in Figure \ref{fig:lambda-calc-interp} and arrive at a variation of the CEK machine.
 Since every expression in \LC{} may only evaluate to a function, the values produced by the interpreter are represented as meta-language functions.
 The interpreter uses environments represented as partial functions from variables to values to handle binding of values to variables during application.
 The application in object-language is interpreted using application in meta-language so the defined language inherits call-by-value, left-to-right evaluation order.
