@@ -131,7 +131,7 @@ I chose to employ the last approach as it allows for derivation of the control f
 The derivation technique guarantees correctness of the resulting interpreter and hence provides high confidence in the actual implementation of the machine.
 I will summarize the derivation here but an interested reader should definitely acquaint themselves with the original work \cite{aam}.
 
-We will begin with an abstract machine for terms in A-normal form presented in Figure ???.
+We will begin with an abstract machine for terms in A-normal form presented in Figure \ref{fig:anf-abstract-machine}
 The machine explicitly allocates memory both for values and for continuations.
 The environment maps variables to locations in value store and the machine keeps an address of the current continuation.
 Complex values (like records) also contain addresses of sub-terms rather than values themselves.
@@ -143,86 +143,126 @@ Consequently, abstract stores will map addresses to sets of abstract values and 
 \begin{center}
 \begingroup
 \begin{tabular}{rl}
-$\nu \in \VA{}$ & $\kappa \in \KA{}$\\
+$\nu \in \VA{}$ & $\kappa \in \KA{}\quad l \in \mathit{Label}$\\
 
 $\rho \in \mathit{Env}$ &$= \mathit{Var} \rightarrow \VA{}$\\
 
 $\sigma \in \mathit{Store}$
-& $= \VA{} \rightarrow \mathit{Val} \cup \KA{} \rightarrow \mathit{Cont}$\\
+& behaves like $ \VA{} \rightarrow \mathit{Val} \cup \KA{} \rightarrow \mathit{Cont}$\\
 
-$Val \ni v$ 
+$\mathit{Val} \ni v$ 
 & ::= $b$ | $\delta$ 
-    | \lstinline!{$r\;l^v\ldots$}!
+    | \lstinline!{$r\;\nu\ldots$}!
     | $\tuple{\rho,x\ldots,e}$
     | \lstinline!(def $x$ ($x\ldots$) $e$)!\\
 
 $\mathit{Cont} \ni k$ & ::= $\tuple{\rho, p, e, \kappa}$ | $\tuple{}$\\
 
+$\mathit{PartialConf} \ni \gamma $
+& ::= $\tuple{\rho, e, \kappa}_e $ | $\tuple{\nu, \kappa}_c$\\
+
 $\mathit{Conf} \ni \varsigma $
-& ::= $\tuple{\sigma, \rho, e, \kappa}_e$ 
-    | $\tuple{\sigma, \nu, \kappa}_c$\\
+& ::= $\tuple{\sigma, \gamma}$\\
 \end{tabular}
 
 \begin{tabular}{|rl|}
 \hline
-$\tuple{\sigma, \rho, e, \kappa}_e$ & $\Rightarrow \varsigma$\\
-\hline
-$\tuple{\sigma, \rho, x, \kappa}_e$
-& $\Rightarrow \tuple{\sigma, \rho(x), \kappa}_c$\\
+$\tuple{\sigma, \tuple{\rho, x, \kappa}_e}$
+& $\Rightarrow \tuple{\mathit{copy}_v(\rho(x), l, \sigma), \tuple{\rho(x), \kappa}_c}$\\
 
-$\tuple{\sigma, \rho, b, \kappa}_e$
-& $\Rightarrow \tuple{\sigma', \nu, \kappa}_c$\\
-& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(b, \sigma)$\\
+$\tuple{\sigma, \tuple{\rho, b^l, \kappa}_e}$
+& $\Rightarrow \tuple{\sigma', \tuple{\nu, \kappa}_c}$\\
+& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(b, l, \sigma)$\\
 
-$\tuple{\sigma, \rho, \lstinline!\{$r\;x\ldots$\}!, \kappa}_e$
-& $\Rightarrow \tuple{\sigma', \nu, \kappa}_c$\\
-& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(\lstinline!{$r\;\rho(x)\ldots$}!, \sigma)$\\
+$\tuple{\sigma, \tuple{\rho, \lstinline!\{$r\;x\ldots$\}!^l, \kappa}_e}$
+& $\Rightarrow \tuple{\sigma', \tuple{\nu, \kappa}_c}$\\
+& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(\lstinline!{$r\;\rho(x)\ldots$}!, l, \sigma)$\\
 
-$\tuple{\sigma, \rho, \lstinline!(fun ($x\ldots$)\ $e$)!, \kappa}_e$
-& $\Rightarrow \tuple{\sigma', \nu, \kappa}_c$\\
-& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(\tuple{\rho, x\ldots, e}, \sigma)$\\
+$\tuple{\sigma, \tuple{\rho, \lstinline!(fun ($x\ldots$)\ $e$)!^l, \kappa}_e}$
+& $\Rightarrow \tuple{\sigma', \tuple{\nu, \kappa}_c}$\\
+& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(\tuple{\rho, x\ldots, e}, l,\sigma)$\\
 
-$\tuple{\sigma, \rho, \lstinline!(let\ $p\;c\;e$)!, \kappa}_e$
-& $\Rightarrow \tuple{\sigma', \rho, c, \kappa'}_e$\\
-& where $\tuple{\sigma', \kappa'} = \mathit{alloc}_k(\tuple{\rho, p, e, \kappa}, \sigma)$\\
+$\tuple{\sigma, \tuple{\rho, \lstinline!(let\ $p\;c^l\;e$)!, \kappa}_e}$
+& $\Rightarrow \tuple{\sigma', \tuple{\rho, c, \kappa'}_e}$\\
+& where $\tuple{\sigma', \kappa'} = \mathit{alloc}_k(\tuple{\rho, p, e, \kappa}, l, \sigma)$\\
 
-$\tuple{\sigma, \rho, \lstinline!($x\;y\ldots$)!, \kappa}_e$
-& $\Rightarrow \mathit{apply}(\sigma, \rho(x), \rho(y)\ldots)$\\
+$\tuple{\sigma, \tuple{\rho, \lstinline!($x\;y\ldots$)!, \kappa}_e}$
+& $\Rightarrow \mathit{apply}(\sigma, \rho(x), \rho(y)\ldots, l)$\\
 
-$\tuple{\sigma, \rho, \lstinline!(match\ $x\;$($p\;e$)$\ldots$)!, \kappa}_e$
+$\tuple{\sigma, \tuple{\rho, \lstinline!(match\ $x\;$($p\;e$)$\ldots$)!, \kappa}_e}$
 & $\Rightarrow \mathit{match}(\sigma, \rho, \rho(x), \tuple{p, e}\ldots)$\\
 
-$\tuple{\sigma, \nu, \kappa}_c$
+$\tuple{\sigma, \tuple{\nu, \kappa}_c}$
 & $\Rightarrow \mathit{match}(\sigma, \rho, \nu, \kappa', \tuple{p, e})$\\
 & where $\tuple{\rho, p, e, \kappa'} = \sigma(\kappa)$\\[2pt]
 
 % \hline &\\[\dimexpr-\normalbaselineskip+2pt]
 \hline
 
-$ \mathit{apply}(\sigma, \nu, \nu'\ldots, \kappa)$
+$ \mathit{apply}(\sigma, \nu, \nu'\ldots, \kappa, l)$
 & $ = \begin{cases}
-  \tuple{\sigma, \rho[(x \mapsto \nu') \ldots], e, \kappa}\\
+  \tuple{\sigma, \tuple{\rho[(x \mapsto \nu') \ldots], e, \kappa}_e}\\
   \quad\text{when}\;\sigma(\nu) = \tuple{\rho, x\ldots, e}\\
 
-  \tuple{\sigma, \rho_i[(x \mapsto \nu') \ldots], e, \kappa}\\
+  \tuple{\sigma, \tuple{\rho_0[(x \mapsto \nu') \ldots], e, \kappa}_e}\\
   \quad\text{when}\;\sigma(\nu) = \lstinline!(def $y\;$($x\ldots$) $e$)!\\
 
-  \tuple{\sigma', \nu'', \kappa}_c \quad\text{when}\;\sigma(\nu) = \delta\\
-  \quad\text{and}\;\tuple{\sigma', \nu''} = \mathit{alloc}_v(\delta(\sigma(\nu')\ldots), \sigma)
+  \tuple{\sigma', \tuple{\nu'', \kappa}_c} \quad\text{when}\;\sigma(\nu) = \delta\\
+  \quad\text{and}\;\tuple{\sigma', \nu''} = \mathit{alloc}_v(\delta(\sigma(\nu')\ldots), l, \sigma)
 \end{cases} $ \\
 
 $ \mathit{match}(\sigma, \rho, \nu, \kappa, \tuple{p, e}\ldots)$
-& $= \tuple{\sigma, \rho', e', \kappa}_e$ where $\rho'$ is the environment\\
-&\quad for the first matching branch with body $e'$
-
-
-
+& $= \tuple{\sigma, \tuple{\rho', e', \kappa}_e}$ where $\rho'$ is the environment\\
+&\quad for the first matching branch with body $e'$\\
+\hline
 \end{tabular}
 \endgroup
 \end{center}
 \caption{An abstract machine for \IDL{} terms in ANF}
 \label{fig:anf-abstract-machine}
 \end{figure}
+
+
+\begin{figure}
+\begin{center}
+\begingroup
+\begin{tabular}{rl}
+$\widetilde{\mathit{Val}} \ni v$ 
+& ::= $tp$ | $\delta$
+    | \lstinline!{$r\;\nu\ldots$}!
+    | $\tuple{\rho,x\ldots,e}$
+    | \lstinline!(def $x$ ($x\ldots$) $e$)!\\
+
+$\sigma \in \mathit{Store} $
+& $= (\VA{} \rightarrow \mathbb{P}(\widetilde{\mathit{Val}}))
+  \times (\KA{} \rightarrow \mathbb{P}(\mathit{Cont}))$\\
+
+$\mathit{alloc}_v(v, l, \tuple{\sigma_v, \sigma_k})$ 
+& $= \tuple{\tuple{\sigma_v[l \mapsto \sigma_v(l)\cup\{v\}], \sigma_k}, l}$\\
+
+$\mathit{alloc}_k(v, l, \tuple{\sigma_v, \sigma_k})$
+& $= \tuple{\tuple{\sigma_v, \sigma_k[l \mapsto \sigma_k(l)\cup\{k\}]}, l}$\\
+
+$\mathit{copy}_v(\nu, l, \tuple{\sigma_v, \sigma_k})$
+& $= \tuple{\sigma_v[l \mapsto \sigma_v(l)\cup\sigma_v(\nu)], \sigma_k}$\\
+
+$\tilde{\varsigma} \in \widetilde{\mathit{Conf}}$
+& $ = Store\times\mathbb{P}(PartialConf)$\\
+
+$\tilde{\varsigma}$ & $\Rightarrow_a \tilde{\varsigma}$\\
+
+$\tuple{\sigma, C}$ 
+& $\Rightarrow_a \tuple{\sigma'\sqcup\sigma, C\cup C'}$\\
+& where $\sigma' = \{\sigma' \mid \exists c \in C. \tuple{\sigma, c} \Rightarrow \tuple{\sigma', c'} \}$\\
+& and $C' = \{c' \mid \exists c \in C. \tuple{\sigma, c} \Rightarrow \tuple{\sigma', c'} \}$
+
+\end{tabular}
+\endgroup
+\end{center}
+\caption{An abstract abstract machine for \IDL{}}
+\label{fig:aam}
+\end{figure}
+
 \section{Selective CPS}\label{sec:selective-cps}
 
 \section{Selective Defunctionalization}\label{sec:selective-defun}
