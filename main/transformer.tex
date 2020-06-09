@@ -4,26 +4,121 @@ Although the two main transformations considered here are widely known, they are
 As the goal of the algorithm is to produce a definition of an abstract machine, to be read as a source code, care has to be taken to produce readable results.
 To this end I chose to allow for partial CPS translation, with functions which should be left alone marked with annotations.
 This approach allows one to specify helper functions whose control-flow is not particularly interesting to capture, such as environment lookups.
-The defunctionalization is presented as a manual transformation, with human-specified function spaces; or in a type directed fashion, where all functions of a particular type end up in the same bag.
+The defunctionalization is usually presented as a manual transformation, with human-specified function spaces or in a type directed fashion, where all functions of a particular type end up in the same bag.
 Neither of these approaches are satisfying for the purposes of a semantics transformer as the goal is to produce the result automatically and to uncover the operational properties of the evaluator.
 I also chose to allow for partial defunctionalization of programs, as it permits one to keep some parts of the machine abstract (e.g. functions modelling a heap or an environment).
 The partitioning of function spaces is done using results of control-flow analysis which approximates the runtime behavior of programs.
 This approach allows for functions of the same type to land in different spaces based on their usage in a program.
 Finally, as the transformation generates new variables and moves code around we have to keep them readable.
 Current implementation employs some heuristics and optional annotations to keep the names under control and inlines most of the introduced intermediate terms.
+
+The abstract syntax of \IDL{} is presented in Figure \ref{fig:idl-abs-syntax}.
+The meta-variables $x, y, z$ denote variables; $r$ denote structure (aka record) names; $s$ is used to denote string literals and $b$ is used for all literal values -- strings, integers and booleans.
+The meta-variable $\mathit{tp}$ is used in pattern matches which check whether a value is one of the primitive types.
+The patterns are referred to with variable $p$ and may be a variable, a literal value, a wildcard, a record pattern or a type test.
+Terms are denoted with variable $t$ and are one of variable, literal value, anonymous function, application, record constructor, let binding (which may destructure bound term with a pattern), pattern match or an error expression.
+
 In the remainder of this chapter I will describe the four stages of the transformation: translation to administrative normal form, selective translation to continuation-passing style, selective defunctionalization and let-inlining.
 I will also describe the algorithm used to compute the control-flow analysis.
 
 
+\begin{figure}
+\begin{center}
+\begingroup
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{rrl}
+  $x, y, z \in Var$ && $r\in StructName$\quad$s \in String$ \quad $b \in Int \cup Boolean \cup String$\\
+  $Tp \ni \mathit{tp} $ &::=& \lstinline!String! | \lstinline!Integer! | \lstinline!Boolean!\\
+  $Pattern \ni p $ &::=& $x$ | $b$ | \lstinline!_! | \lstinline!{$r$ $p\ldots$}! |  \lstinline![$\mathit{tp}$ $x$]!\\
+  $Term \ni t$ &::=& $x$ | $b$
+              | \lstinline!(fun ($x\ldots$) $t$)!
+              | \lstinline!($t$ $t\ldots$)!
+              | \lstinline!{$t$ $t\ldots$}!\\
+              &|& \lstinline!(let $p$ $t$ $t$)!
+              | \lstinline!(match $t$ ($p$ $t$)$\ldots$)!
+              | \lstinline!(error $s$)!\\
+  $FunDef \ni \mathit{fd}$ &::=& \lstinline!(def $x$ ($x\ldots$) $t$)!\\
+  $StructDef \ni \mathit{sd}$ &::=& \lstinline!(def-struct {$r$ $x\ldots$})!\\
+\end{tabular}
+\endgroup
+\end{center}
+\caption{Abstract syntax of \IDL{}}\label{fig:idl-abs-syntax}
+\end{figure}
+
 
 \section{Administrative Normal Form}
 The administrative normal form (ANF) \cite{flanagan-anf} is an intermediate representation for functional languages in which all intermediate results are let-bound to names.
-This shape greatly simplifies later transformations which concern control-flow as, from operational point of view, the only place where a continuation is grown is the let-binding.
-Additionally, for the same reason, a program in ANF is much easier to evaluate with an abstract machine which will be taken advantage of in Section \ref{sec:transformer-cfa}.
-The algorithm for transforming \emph{IDL} programs into ANF is presented in Figure \ref{fig:transformer-anf}
+This shape greatly simplifies later transformations as programs do not have complicated sub-expressions.
+From operational point of view, the only place where a continuation is grown when evaluating program in ANF is a let-binding.
+This property ensures that a program in ANF is also much easier to evaluate using an abstract machine which will be taken advantage of in Section \ref{sec:transformer-cfa}.
+The abstract syntax of terms in ANF and an algorithm for transforming \IDL{} programs into such form is presented in Figure \ref{fig:transformer-anf}.
+The terms are partitioned into three levels: variables, commands and expressions.
+Commands $c$ extend variables with values -- base literals, record constructors (with variables as sub-terms) and abstractions (whose bodies are in ANF); and with redexes like applications of variables and match expressions (which match on variable and have branches in ANF).
+Expressions $e$ in ANF have the shape of a possibly empty sequence of let-bindings ending with either an error term or a command.
+
+The $\anf{\cdot}{\cdot}$ function, written in CPS, is the main transformation function.
+Its arguments are term to be transformed and a meta-continuation (i.e. a continuation in meta-language) which will be called to obtain the term for the rest of transformed input.
+This function decomposes the term according to the evaluation rules and uses two helper functions.
+Function $\atomic{\cdot}$ transforms a continuation expecting an atomic expression (which are created when transforming commands) into one accepting any command by let-binding passed argument $c$ when necessary.
+Function $\anfSeq{\cdot}{\cdot}$ sequences computation of multiple expressions by creating a chain of let-bindings (using $\atomic{\cdot}$) and then calling the continuation with created variables.
+
+TODO:
+- better characterization of the ANF
+- describe the algorithm
+- explain why this particular form
+
 \begin{figure}
-  \caption{ANF transformation for \textit{IDL}}
-  \label{fig:transformer-anf}
+\begin{center}
+\begingroup
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{rll}
+  $Command \ni c $ && ::= $x$ | $b$
+  | \lstinline!(fun ($x\ldots$) $e$)!
+  | \lstinline!($x$ $x\ldots$)!\\
+  &&| \lstinline!{$r$ $x\ldots$}!
+  | \lstinline!(match $x$ ($p$ $e$)$\ldots$)!\\
+  $Expression \ni e $ && ::= $c$ 
+  | \lstinline!(let $p$ $c$ $e$)!
+  | \lstinline!(error $s$)!\\
+  
+  % $id\,x$ &&$= x$\\
+  \hline\\
+  $\bb{\cdot}$ &$\cdot$ &: $Expr \times (Com \rightarrow Anf) \rightarrow Anf$\\
+  $\bb{a}$ &$k$ &$= k\,a$\\
+  
+  $\bb{\lstinline!(fun ($x\ldots$)\ $e$)!}$ &$k$
+  & $= k\, \lstinline!(fun ($x\ldots$) $\anf{e}{id}$)!$\\
+  
+  $\bb{\lstinline!($e_f \; e_{arg}\ldots$)!}$ &$k$ 
+  &$= \anf{e_f}{\atomic{\lambda a_f . \anfSeq{e_{arg}\ldots}{\lambda (a_{arg}\ldots) . k \,\lstinline!($a_f\;a_{arg}\ldots$)!}}}$\\
+
+  $\bb{\lstinline!(let\ $x\;e_1\;e_2$)!}$ & $k$
+  &$= \anf{e_1}{\lambda e_1' . \lstinline!(let\ $x\;e_1'\;\anf{e_2}{k}$)!}$\\
+
+  $\bb{\lstinline!\{$r \; e\ldots$\}!}$ &$k$ 
+  &$= \anfSeq{e\ldots}{\lambda (a\ldots) . k \,\lstinline!\{$r\;a\ldots$\}!}$\\
+
+  $\bb{\lstinline!(match\ $e$\ ($p \;e_b$))!}$ & $k$
+  &$= \anf{e}{\atomic{\lambda e' . k\,\lstinline!(match\ $e'\;$($p\;\anf{e_b}{id}$)!}}$\\
+
+  $\bb{\lstinline!(error\ $s$)!}$ & \_ & $= $ \lstinline!(error $s$)!\\
+
+  \hline\\
+  $[\cdot]_a$ & $\cdot$ & : $(Atomic \rightarrow Anf) \rightarrow Com \rightarrow Anf$\\
+  $[k]_a$ & $a$ & $= k\,a$\\
+  $[k]_a$ & $c$ & $= $ \lstinline!(let $x$ $c$ $(k\,x)$)!\\
+  \hline\\
+  $\bb{\cdot}_s$ & $\cdot$ &: $Expr^* \times (Atomic^* \rightarrow Anf) \rightarrow Anf$\\
+  $\bb{e\ldots}_s$ & $k$ & $= \bb{e\ldots}_s^{\epsilon}$\\
+  $\bb{\epsilon}_s^{a\ldots}$ & $k$ & $= k\,(a\ldots)$\\
+  $\bb{e\,e_r\ldots}_s^{a_{acc}\ldots}$ & $k$ & 
+  $= \anf{e}{\atomic{\lambda a . \bb{e_r\ldots}_s^{a_{acc}\ldots a}}}$
+
+\end{tabular}
+\endgroup
+\end{center}
+\caption{ANF transformation for \IDL{}}
+\label{fig:transformer-anf}
 \end{figure}
 
 
@@ -36,8 +131,98 @@ I chose to employ the last approach as it allows for derivation of the control f
 The derivation technique guarantees correctness of the resulting interpreter and hence provides high confidence in the actual implementation of the machine.
 I will summarize the derivation here but an interested reader should definitely acquaint themselves with the original work \cite{aam}.
 
+We will begin with an abstract machine for terms in A-normal form presented in Figure ???.
+The machine explicitly allocates memory both for values and for continuations.
+The environment maps variables to locations in value store and the machine keeps an address of the current continuation.
+Complex values (like records) also contain addresses of sub-terms rather than values themselves.
+This formulation ensures that the space of machine-states can be bounded by limiting store sizes.
+To this end we will use structural abstraction and approximate concrete values with abstract ones.
+Consequently, abstract stores will map addresses to sets of abstract values and continuations respectively, in order to account for their now finite domains.
+
+\begin{figure}
+\begin{center}
+\begingroup
+\begin{tabular}{rl}
+$\nu \in \VA{}$ & $\kappa \in \KA{}$\\
+
+$\rho \in \mathit{Env}$ &$= \mathit{Var} \rightarrow \VA{}$\\
+
+$\sigma \in \mathit{Store}$
+& $= \VA{} \rightarrow \mathit{Val} \cup \KA{} \rightarrow \mathit{Cont}$\\
+
+$Val \ni v$ 
+& ::= $b$ | $\delta$ 
+    | \lstinline!{$r\;l^v\ldots$}!
+    | $\tuple{\rho,x\ldots,e}$
+    | \lstinline!(def $x$ ($x\ldots$) $e$)!\\
+
+$\mathit{Cont} \ni k$ & ::= $\tuple{\rho, p, e, \kappa}$ | $\tuple{}$\\
+
+$\mathit{Conf} \ni \varsigma $
+& ::= $\tuple{\sigma, \rho, e, \kappa}_e$ 
+    | $\tuple{\sigma, \nu, \kappa}_c$\\
+\end{tabular}
+
+\begin{tabular}{|rl|}
+\hline
+$\tuple{\sigma, \rho, e, \kappa}_e$ & $\Rightarrow \varsigma$\\
+\hline
+$\tuple{\sigma, \rho, x, \kappa}_e$
+& $\Rightarrow \tuple{\sigma, \rho(x), \kappa}_c$\\
+
+$\tuple{\sigma, \rho, b, \kappa}_e$
+& $\Rightarrow \tuple{\sigma', \nu, \kappa}_c$\\
+& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(b, \sigma)$\\
+
+$\tuple{\sigma, \rho, \lstinline!\{$r\;x\ldots$\}!, \kappa}_e$
+& $\Rightarrow \tuple{\sigma', \nu, \kappa}_c$\\
+& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(\lstinline!{$r\;\rho(x)\ldots$}!, \sigma)$\\
+
+$\tuple{\sigma, \rho, \lstinline!(fun ($x\ldots$)\ $e$)!, \kappa}_e$
+& $\Rightarrow \tuple{\sigma', \nu, \kappa}_c$\\
+& where $\tuple{\sigma', \nu} = \mathit{alloc}_v(\tuple{\rho, x\ldots, e}, \sigma)$\\
+
+$\tuple{\sigma, \rho, \lstinline!(let\ $p\;c\;e$)!, \kappa}_e$
+& $\Rightarrow \tuple{\sigma', \rho, c, \kappa'}_e$\\
+& where $\tuple{\sigma', \kappa'} = \mathit{alloc}_k(\tuple{\rho, p, e, \kappa}, \sigma)$\\
+
+$\tuple{\sigma, \rho, \lstinline!($x\;y\ldots$)!, \kappa}_e$
+& $\Rightarrow \mathit{apply}(\sigma, \rho(x), \rho(y)\ldots)$\\
+
+$\tuple{\sigma, \rho, \lstinline!(match\ $x\;$($p\;e$)$\ldots$)!, \kappa}_e$
+& $\Rightarrow \mathit{match}(\sigma, \rho, \rho(x), \tuple{p, e}\ldots)$\\
+
+$\tuple{\sigma, \nu, \kappa}_c$
+& $\Rightarrow \mathit{match}(\sigma, \rho, \nu, \kappa', \tuple{p, e})$\\
+& where $\tuple{\rho, p, e, \kappa'} = \sigma(\kappa)$\\[2pt]
+
+% \hline &\\[\dimexpr-\normalbaselineskip+2pt]
+\hline
+
+$ \mathit{apply}(\sigma, \nu, \nu'\ldots, \kappa)$
+& $ = \begin{cases}
+  \tuple{\sigma, \rho[(x \mapsto \nu') \ldots], e, \kappa}\\
+  \quad\text{when}\;\sigma(\nu) = \tuple{\rho, x\ldots, e}\\
+
+  \tuple{\sigma, \rho_i[(x \mapsto \nu') \ldots], e, \kappa}\\
+  \quad\text{when}\;\sigma(\nu) = \lstinline!(def $y\;$($x\ldots$) $e$)!\\
+
+  \tuple{\sigma', \nu'', \kappa}_c \quad\text{when}\;\sigma(\nu) = \delta\\
+  \quad\text{and}\;\tuple{\sigma', \nu''} = \mathit{alloc}_v(\delta(\sigma(\nu')\ldots), \sigma)
+\end{cases} $ \\
+
+$ \mathit{match}(\sigma, \rho, \nu, \kappa, \tuple{p, e}\ldots)$
+& $= \tuple{\sigma, \rho', e', \kappa}_e$ where $\rho'$ is the environment\\
+&\quad for the first matching branch with body $e'$
 
 
+
+\end{tabular}
+\endgroup
+\end{center}
+\caption{An abstract machine for \IDL{} terms in ANF}
+\label{fig:anf-abstract-machine}
+\end{figure}
 \section{Selective CPS}\label{sec:selective-cps}
 
 \section{Selective Defunctionalization}\label{sec:selective-defun}

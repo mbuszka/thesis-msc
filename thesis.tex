@@ -11,8 +11,37 @@
   mathescape=true
 }
 
+% Allows to use lstinline in the math mode
+% See https://tex.stackexchange.com/questions/127010/how-can-i-make-lstinline-function-normally-inside-math-mode
+\usepackage{etoolbox}
+\expandafter\patchcmd\csname \string\lstinline\endcsname{%
+  \leavevmode
+  \bgroup
+}{%
+  \leavevmode
+  \ifmmode\hbox\fi
+  \bgroup
+}{}{%
+  \typeout{Patching of \string\lstinline\space failed!}%
+}
+
 \newcommand{\LC}{\(\lambda\)-calculus}
 \newcommand{\IDL}{\textit{IDL}}
+\newcommand{\bb}[1]{\left\llbracket #1 \right\rrbracket}
+\newcommand{\anf}[2]{\bb{#1}#2}
+\newcommand{\atomic}[1]{[ #1 ]_{a}}
+\newcommand{\anfSeq}[2]{\bb{#1}_{s} #2}
+\newcommand{\e}[1]{\lstinline{#1}}
+\newcommand{\tuple}[1]{\left< #1 \right>}
+\newcommand{\VA}[0]{\mathit{VAddr}}
+\newcommand{\KA}[0]{\mathit{KAddr}}
+\newcommand{\VS}[0]{\mathit{VStore}}
+\newcommand{\KS}[0]{\mathit{KStore}}
+
+% define "struts", as suggested by Claudio Beccari in
+%    a piece in TeX and TUG News, Vol. 2, 1993.
+\newcommand\Tstrut{\rule{0pt}{2.6ex}}         % = `top' strut
+\newcommand\Bstrut{\rule[-0.9ex]{0pt}{0pt}}   % = `bottom' strut
 
 \addbibresource{bibliography.bib}
 \DeclareFieldFormat[
