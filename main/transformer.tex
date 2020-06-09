@@ -122,33 +122,63 @@ TODO:
 \end{figure}
 
 
-\section{Control Flow Analysis}\label{sec:transformer-cfa}
-The analysis most relevant to the task of deriving abstract machines from interpreters is the control flow analysis.
+\section{Control-Flow Analysis}\label{sec:transformer-cfa}
+The analysis most relevant to the task of deriving abstract machines from interpreters is the control-flow analysis.
 Its objective is to find for each expression in a program an over-approximation of a set of functions it may evaluate to \cite{popa}.
 This information can be used in two places: when determining whether a function and applications should be CPS transformed and for checking which functions an expression in operator position may evaluate to.
 There are a couple of different approaches to performing this analysis available in the literature: abstract interpretation \cite{popa}, (annotated) type systems \cite{popa} and abstract abstract machines \cite{aam}.
-I chose to employ the last approach as it allows for derivation of the control flow analysis from an abstract machine for \IDL{}.
+I chose to employ the last approach as it allows for derivation of the control-flow analysis from an abstract machine for \IDL{}.
 The derivation technique guarantees correctness of the resulting interpreter and hence provides high confidence in the actual implementation of the machine.
 I will summarize the derivation here but an interested reader should definitely acquaint themselves with the original work \cite{aam}.
 
-We will begin with an abstract machine for terms in A-normal form presented in Figure \ref{fig:anf-abstract-machine}
-The machine explicitly allocates memory both for values and for continuations.
-The environment maps variables to locations in value store and the machine keeps an address of the current continuation.
-Complex values (like records) also contain addresses of sub-terms rather than values themselves.
-This formulation ensures that the space of machine-states can be bounded by limiting store sizes.
-To this end we will use structural abstraction and approximate concrete values with abstract ones.
-Consequently, abstract stores will map addresses to sets of abstract values and continuations respectively, in order to account for their now finite domains.
+We will begin with a template of a machine for terms in A-normal form presented in Figure \ref{fig:anf-abstract-machine}.
+We assume that every term has an unique label $l$.
+The template is parameterized by implementation of the store $\sigma$ along with five operations: $\mathit{alloc}_v$, $\mathit{alloc}_k$, $\mathit{deref}_v$, $\mathit{deref}_k$ and $\mathit{copy}_v$.
+The machine uses this store both as a memory for values and continuations.
+The store maps value addresses $\nu$ to values $v$ and continuation addresses $\kappa$ to continuations $k$.
+The environment maps program variables to value locations.
+The values on which machine operates are the following: base values $b$, primitive operations $\delta$, records with addresses as fields, closures and top-level functions.
+Thanks to terms being in A-normal form, there are only two kinds of continuations which form a stack.
+The stack frames $\tuple{\rho, p, e, \kappa}$ are introduced by let-bindings. They hold an environment $\rho$, a pattern $p$ to use for destructuring of a value, the body $e$ of a let expression and a pointer to the next continuation $\kappa$.
+The bottom of the stack is marked by the empty continuation $\tuple{}$.
+
+The machine configurations are pairs of a store $\sigma$ and a partial configuration $\gamma$.
+This split of configuration into two parts will prove beneficial when we will be instantiating the template to obtain an abstract interpreter.
+There are two classes of partial configurations.
+An evaluation configuration contains an environment $\rho$, an expression $e$ and a continuation pointer $\kappa$.
+A continuation configuration holds an address $\nu$ of a value that has been computed so far and a pointer $\kappa$ to a resumption which should be applied next.
+
+The first case of the transition relation $\Rightarrow$ looks up a pointer for the variable $x$ in the environment $\rho$ and switches to the continuation mode.
+It may modify the store via $\mathit{copy}$ function which will become relevant when we consider an abstract instantiation of the machine.
+The next three cases deal with values by $\mathit{alloc}$ating the values in the store and switching to the continuation mode.
+When the machine encounters a let-binding it allocates a continuation for the body $e$ of the expression and proceeds to evaluate the bound command $c$ with the new pointer $\kappa'$.
+In case of applications and match expressions the resulting configuration is decided using auxiliary functions $\mathit{apply}$ and $\mathit{match}$ respectively.
+Finally, in continuation mode, may transition if the continuation loaded from address $\kappa$ is a frame.
+In such a case the machine matches the stored pattern against the value pointed-to by $\nu$.
+Otherwise $\kappa$ points to a $\tuple{}$ instead and the machine has reached the final state.
+The auxiliary function $\mathit{apply}$ checks what kind of function is referenced by $\nu$ and proceeds accordingly.
+
+The machine template can now be instantiated with a store implementation in order to obtain an abstract machine.
+By choosing $\mathit{Store}$ to be a mapping with infinite domain we can ensure that $\mathit{alloc}$ can always return a fresh address and the machine behaves as expected.
+
+Let us now turn to a different instantiation of the template.
+Figure \ref{fig:aam} shows the missing pieces of an abstract abstract machine for \IDL{}.
+The store is represented as a pair of finite mappings from labels to sets of abstract values and continuations respectively.
+The abstract values use base type names $tp$ to represent any value of that type, abstract versions of primitive operations, records, closures and top-level functions.
+The abstract configuration consists of a store and a set of partial configurations.
+% The abstract transition $\Rightarrow_a$ computes a
+
+
 
 \begin{figure}
 \begin{center}
 \begingroup
 \begin{tabular}{rl}
-$\nu \in \VA{}$ & $\kappa \in \KA{}\quad l \in \mathit{Label}$\\
+$\nu \in \VA{}$ & $\kappa \in \KA{}\quad l \in \mathit{Label}$\quad$\sigma \in \mathit{Store}$\\
+
+$\delta \in \mathit{PrimOp}$ & $\subseteq \mathit{Val}^* \rightarrow Val$\\
 
 $\rho \in \mathit{Env}$ &$= \mathit{Var} \rightarrow \VA{}$\\
-
-$\sigma \in \mathit{Store}$
-& behaves like $ \VA{} \rightarrow \mathit{Val} \cup \KA{} \rightarrow \mathit{Cont}$\\
 
 $\mathit{Val} \ni v$ 
 & ::= $b$ | $\delta$ 
@@ -194,7 +224,7 @@ $\tuple{\sigma, \tuple{\rho, \lstinline!(match\ $x\;$($p\;e$)$\ldots$)!, \kappa}
 
 $\tuple{\sigma, \tuple{\nu, \kappa}_c}$
 & $\Rightarrow \mathit{match}(\sigma, \rho, \nu, \kappa', \tuple{p, e})$\\
-& where $\tuple{\rho, p, e, \kappa'} = \sigma(\kappa)$\\[2pt]
+& where $\tuple{\rho, p, e, \kappa'} = \mathit{deref}_k(\sigma, \kappa)$\\[2pt]
 
 % \hline &\\[\dimexpr-\normalbaselineskip+2pt]
 \hline
@@ -202,12 +232,13 @@ $\tuple{\sigma, \tuple{\nu, \kappa}_c}$
 $ \mathit{apply}(\sigma, \nu, \nu'\ldots, \kappa, l)$
 & $ = \begin{cases}
   \tuple{\sigma, \tuple{\rho[(x \mapsto \nu') \ldots], e, \kappa}_e}\\
-  \quad\text{when}\;\sigma(\nu) = \tuple{\rho, x\ldots, e}\\
+  \quad\text{when}\;\mathit{deref}_v(\sigma, \nu) = \tuple{\rho, x\ldots, e}\\
 
   \tuple{\sigma, \tuple{\rho_0[(x \mapsto \nu') \ldots], e, \kappa}_e}\\
-  \quad\text{when}\;\sigma(\nu) = \lstinline!(def $y\;$($x\ldots$) $e$)!\\
+  \quad\text{when}\;\mathit{deref}_v(\sigma, \nu) = \lstinline!(def $y\;$($x\ldots$) $e$)!\\
 
-  \tuple{\sigma', \tuple{\nu'', \kappa}_c} \quad\text{when}\;\sigma(\nu) = \delta\\
+  \tuple{\sigma', \tuple{\nu'', \kappa}_c}\\
+  \quad\text{when}\;\mathit{deref}_v(\sigma, \nu) = \delta\\
   \quad\text{and}\;\tuple{\sigma', \nu''} = \mathit{alloc}_v(\delta(\sigma(\nu')\ldots), l, \sigma)
 \end{cases} $ \\
 
@@ -227,8 +258,9 @@ $ \mathit{match}(\sigma, \rho, \nu, \kappa, \tuple{p, e}\ldots)$
 \begin{center}
 \begingroup
 \begin{tabular}{rl}
+$\VA{}$ & $=\KA{}=\mathit{Label}$\\
 $\widetilde{\mathit{Val}} \ni v$ 
-& ::= $tp$ | $\delta$
+& ::= $tp$ | $\widetilde{\delta}$
     | \lstinline!{$r\;\nu\ldots$}!
     | $\tuple{\rho,x\ldots,e}$
     | \lstinline!(def $x$ ($x\ldots$) $e$)!\\
@@ -248,13 +280,12 @@ $\mathit{copy}_v(\nu, l, \tuple{\sigma_v, \sigma_k})$
 
 $\tilde{\varsigma} \in \widetilde{\mathit{Conf}}$
 & $ = Store\times\mathbb{P}(PartialConf)$\\
-
-$\tilde{\varsigma}$ & $\Rightarrow_a \tilde{\varsigma}$\\
-
+\hline
 $\tuple{\sigma, C}$ 
 & $\Rightarrow_a \tuple{\sigma'\sqcup\sigma, C\cup C'}$\\
 & where $\sigma' = \{\sigma' \mid \exists c \in C. \tuple{\sigma, c} \Rightarrow \tuple{\sigma', c'} \}$\\
-& and $C' = \{c' \mid \exists c \in C. \tuple{\sigma, c} \Rightarrow \tuple{\sigma', c'} \}$
+& and $C' = \{c' \mid \exists c \in C. \tuple{\sigma, c} \Rightarrow \tuple{\sigma', c'} \}$\\
+\hline
 
 \end{tabular}
 \endgroup
