@@ -3,14 +3,14 @@ The adaptation of the functional correspondence into a semantics transformer was
 Although the two main transformations considered here are widely known, they are not presented in literature in a form directly applicable for the task.
 As the goal of the algorithm is to produce a definition of an abstract machine, to be read as a source code, care has to be taken to produce readable results.
 To this end I chose to allow for partial CPS translation, with functions which should be left alone marked with annotations.
-This approach allows one to specify helper functions whose control-flow is not particularly interesting to capture, such as environment lookups.
-The defunctionalization is usually presented as a manual transformation, with human-specified function spaces or in a type directed fashion, where all functions of a particular type end up in the same bag.
+This approach allows one to specify helper functions whose control-flow is not particularly interesting to capture such as environment lookups.
+The defunctionalization is usually presented as a manual transformation with human-specified function spaces or in a type directed fashion where all functions of a particular type end up in the same bag.
 Neither of these approaches are satisfying for the purposes of a semantics transformer as the goal is to produce the result automatically and to uncover the operational properties of the evaluator.
-I also chose to allow for partial defunctionalization of programs, as it permits one to keep some parts of the machine abstract (e.g. functions modelling a heap or an environment).
-The partitioning of function spaces is done using results of control-flow analysis which approximates the runtime behavior of programs.
-This approach allows for functions of the same type to land in different spaces based on their usage in a program.
+Additionally I wanted to allow for partial defunctionalization of programs as it permits one to keep some parts of the machine abstract (e.g. functions modelling a heap or an environment).
+I chose to employ the control-flow analysis to guide partitioning of function spaces as it approximates the runtime behavior of programs.
+This approach allows for functions of the same type to land in different spaces based on their usage and it performed satisfactory in experiments I have conducted.
 Finally, as the transformation generates new variables and moves code around we have to keep them readable.
-Current implementation employs some heuristics and optional annotations to keep the names under control and inlines most of the introduced intermediate terms.
+To this end I both allow for (optional) program annotations and employ heuristics to guide generation of names for function records, introduced variables and functions.
 
 The abstract syntax of \IDL{} is presented in Figure \ref{fig:idl-abs-syntax}.
 The meta-variables $x, y, z$ denote variables; $r$ denote structure (aka record) names; $s$ is used to denote string literals and $b$ is used for all literal values -- strings, integers and booleans.
@@ -129,18 +129,20 @@ This information can be used in two places: when determining whether a function 
 There are a couple of different approaches to performing this analysis available in the literature: abstract interpretation \cite{popa}, (annotated) type systems \cite{popa} and abstract abstract machines \cite{aam}.
 I chose to employ the last approach as it allows for derivation of the control-flow analysis from an abstract machine for \IDL{}.
 The derivation technique guarantees correctness of the resulting interpreter and hence provides high confidence in the actual implementation of the machine.
-I will summarize the derivation here but an interested reader should definitely acquaint themselves with the original work \cite{aam}.
+I will present the template for acquiring both concrete and abstract versions of the abstract machine for \IDL{} but refrain from stepping through the whole derivation.
+An interested reader should definitely acquaint themselves with the original work in \cite{aam} to understand the reasoning and insights behind the technique.
 
-We will begin with a template of a machine for terms in A-normal form presented in Figure \ref{fig:anf-abstract-machine}.
-We assume that every term has an unique label $l$.
+\subsection*{A Machine Template}
+We will begin with a template of a machine for \IDL{} terms in A-normal form presented in Figure \ref{fig:anf-abstract-machine}.
+It is a CEK-style machine modified to explicitly allocate memory for values and continuations in an abstract store.
 The template is parameterized by implementation of the store $\sigma$ along with five operations: $\mathit{alloc}_v$, $\mathit{alloc}_k$, $\mathit{deref}_v$, $\mathit{deref}_k$ and $\mathit{copy}_v$.
-The machine uses this store both as a memory for values and continuations.
 The store maps value addresses $\nu$ to values $v$ and continuation addresses $\kappa$ to continuations $k$.
 The environment maps program variables to value locations.
 The values on which machine operates are the following: base values $b$, primitive operations $\delta$, records with addresses as fields, closures and top-level functions.
 Thanks to terms being in A-normal form, there are only two kinds of continuations which form a stack.
 The stack frames $\tuple{\rho, p, e, \kappa}$ are introduced by let-bindings. They hold an environment $\rho$, a pattern $p$ to use for destructuring of a value, the body $e$ of a let expression and a pointer to the next continuation $\kappa$.
 The bottom of the stack is marked by the empty continuation $\tuple{}$.
+We assume that every term has a unique label $l$ which will be used in abstract version of the machine to implement store addresses.
 
 The machine configurations are pairs of a store $\sigma$ and a partial configuration $\gamma$.
 This split of configuration into two parts will prove beneficial when we will be instantiating the template to obtain an abstract interpreter.
@@ -157,20 +159,9 @@ Finally, in continuation mode, may transition if the continuation loaded from ad
 In such a case the machine matches the stored pattern against the value pointed-to by $\nu$.
 Otherwise $\kappa$ points to a $\tuple{}$ instead and the machine has reached the final state.
 The auxiliary function $\mathit{apply}$ checks what kind of function is referenced by $\nu$ and proceeds accordingly.
+TODO match.
 
-The machine template can now be instantiated with a store implementation in order to obtain an abstract machine.
-By choosing $\mathit{Store}$ to be a mapping with infinite domain we can ensure that $\mathit{alloc}$ can always return a fresh address and the machine behaves as expected.
-
-Let us now turn to a different instantiation of the template.
-Figure \ref{fig:aam} shows the missing pieces of an abstract abstract machine for \IDL{}.
-The store is represented as a pair of finite mappings from labels to sets of abstract values and continuations respectively.
-The abstract values use base type names $tp$ to represent any value of that type, abstract versions of primitive operations, records, closures and top-level functions.
-The abstract configuration consists of a store and a set of partial configurations.
-% The abstract transition $\Rightarrow_a$ computes a
-
-
-
-\begin{figure}
+\begin{figure}[ht]
 \begin{center}
 \begingroup
 \begin{tabular}{rl}
@@ -253,6 +244,32 @@ $ \mathit{match}(\sigma, \rho, \nu, \kappa, \tuple{p, e}\ldots)$
 \label{fig:anf-abstract-machine}
 \end{figure}
 
+\subsection*{A Concrete Abstract Machine}
+The machine template can now be instantiated with a store implementation in order to obtain an abstract machine.
+By choosing $\mathit{Store}$ to be a mapping with infinite domain we can ensure that $\mathit{alloc}$ can always return a fresh address.
+In this setting the store-allocated continuations are just an implementation of a stack.
+The extra layer of indirection introduced by storing values in a store can also be disregarded as the machine operates on persistent values.
+Therefore the machine corresponds to a CEK-style abstract machine which is a natural \cite{functional-correspondence} formulation for call-by-value functional calculi.
+
+\subsection*{An Abstract Abstract Machine}\label{ss:aam}
+Let us now turn to a different instantiation of the template.
+Figure \ref{fig:aam} shows the missing pieces of an abstract abstract machine for \IDL{}.
+The store is represented as a pair of finite mappings from labels to sets of abstract values and continuations respectively.
+The abstract values use base type names $tp$ to represent any value of that type, abstract versions of primitive operations, records, closures and top-level functions.
+This bounding of store domain and range ensures that the state-space of the machine becomes finite and therefore can be used for computing an analysis.
+To retain soundness w.r.t. the concrete abstract machine the store must map a single address to multiple values to account for address reuse.
+This style of abstraction is fairly straightforward as noted by \cite{aam} and used in textbooks \cite{popa}.
+When instantiated with this store, the transition relation $\Rightarrow$ becomes nondeterministic as pointer $\mathit{deref}$erencing nondeterministically returns one of the values available in the store.
+This machine is not yet suitable for computing the analysis as the state space is still too large since every machine configuration has its own copy of the store.
+To circumvent this problem a standard technique of widening \cite{popa} can be employed.
+In particular, following \cite{aam}, we will use a global store.
+The abstract configuration $\tilde{\varsigma}$ is a pair of a store and a set of partial configurations.
+The abstract transition $\Rightarrow_a$ performs one step of computation using $\Rightarrow$ on the global store $\sigma$ paired with every partial configuration $\gamma$.
+The resulting stores $\sigma'$ are merged together and with the original store to create a new, extended global store.
+The partial configurations $C'$ are added to the initial set of configurations $C$.
+The transition relation $\Rightarrow_a$ is deterministic so it can be treated as a function.
+This function is monotone on a finite lattice and therefore is amenable to fixed-point iteration.
+TODO comments on alloc, deref, copy and match.
 
 \begin{figure}
 \begin{center}
@@ -278,13 +295,17 @@ $\mathit{alloc}_k(v, l, \tuple{\sigma_v, \sigma_k})$
 $\mathit{copy}_v(\nu, l, \tuple{\sigma_v, \sigma_k})$
 & $= \tuple{\sigma_v[l \mapsto \sigma_v(l)\cup\sigma_v(\nu)], \sigma_k}$\\
 
+$\mathit{deref}_v(l, \tuple{\sigma_v, \sigma_k})$ 
+& $= \sigma_v$\\
+
+
 $\tilde{\varsigma} \in \widetilde{\mathit{Conf}}$
 & $ = Store\times\mathbb{P}(PartialConf)$\\
 \hline
 $\tuple{\sigma, C}$ 
 & $\Rightarrow_a \tuple{\sigma'\sqcup\sigma, C\cup C'}$\\
-& where $\sigma' = \{\sigma' \mid \exists c \in C. \tuple{\sigma, c} \Rightarrow \tuple{\sigma', c'} \}$\\
-& and $C' = \{c' \mid \exists c \in C. \tuple{\sigma, c} \Rightarrow \tuple{\sigma', c'} \}$\\
+& where $\sigma' = \bigsqcup\{\sigma' \mid \exists \gamma \in C. \tuple{\sigma, \gamma} \Rightarrow \tuple{\sigma', \gamma'} \}$\\
+& and $C' = \{\gamma' \mid \exists \gamma \in C. \tuple{\sigma, \gamma} \Rightarrow \tuple{\sigma', \gamma'} \}$\\
 \hline
 
 \end{tabular}
@@ -294,7 +315,114 @@ $\tuple{\sigma, C}$
 \label{fig:aam}
 \end{figure}
 
+\subsection*{Computing the Analysis}
+With the abstract transition function in hand we can now specify the algorithm for obtaining the analysis.
+To start the abstract interpreter we must provide it with an initial configuration: a store, an environment, a term and a continuation pointer.
+The store will be assembled from datatype and structure definitions of the program as well as base types.
+The initial term is the body of the \lstinline!main! function of the interpreter and the environment is the global environment extended with \lstinline!main!'s parameters bound to pointers to datatypes in the above-built store.
+The initial continuation is of course $\tuple{}$ and the pointer is the label of the \lstinline!main!'s body.
+The analysis is computed by performing fixed-point iteration of $\Rightarrow_a$.
+The resulting store will contain a set of functions to which every variable (the only allowed term) in function position may evaluate to (ensured by the use of $\mathit{copy}_v$ function).
+This result will be used in Sections \ref{sec:selective-cps} and \ref{sec:selective-defun}.
+
 \section{Selective CPS}\label{sec:selective-cps}
+\begin{figure}[]
+\centering
+\begin{tabular}{rl}
+  $\cps{x}{k}$ &= \lstinline!($k$ $x$)!\\
+  
+  $\cps{b}{k}$ &= \lstinline!(let $x$ $b$ ($k$ $x$))!\\
+  
+  $\cps{\lstinline!\{$r\;x\ldots$\}!}{k}$
+  &= \lstinline!(let $y$ {$r\;x\ldots$} ($k$ $y$))!\\
+
+  $\cps{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}{k}$
+  &= \lstinline!(let $y$ (fun ($x\ldots$) $\dir{e}$) ($k$ $y$))!\\
+
+  $\cps{\lstinline!(fun ($x\ldots$)\ $e$)!}{k}$
+  &= \lstinline!(let $y$ (fun ($x\ldots k'$) $\cps{e}{k'}$) ($k$ $y$))!\\
+
+  $\cps{\lstinline!($f^l\;x\ldots$)!}{k}$
+  &= $ \begin{cases}
+    \lstinline!($f$ $x\ldots$ $k$)! & \mathrm{when}\,\noneAtomic(l)\\
+    \lstinline!(let $y$ ($f$ $x\ldots$) ($k$ $y$))! & \mathrm{when}\,\allAtomic(l)\\
+  \end{cases} $\\
+
+  $\cps{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}{k}$
+  &= \lstinline!(match $x$ ($p$ $\cps{e}{k}$)$\ldots$)!\\
+
+  $\cps{\lstinline!(let$\;x\;c\;e$)!}{k} $
+  &= $ \begin{cases}
+    \lstinline!(let $x$ $\dir{d}$ $\cps{e}{k}$)! &\mathrm{when}\,\trivial(c)\\
+    \lstinline!(let $k'$ (fun ($x$) $\cps{e}{k}$) $\cps{c}{k'}$)!
+  \end{cases}$\\
+
+  $\cps{\lstinline!(error$\;s$)!}{k}$ &= \lstinline!(error $s$)!
+\end{tabular}
+\caption{A translation for CPS terms}
+\label{fig:cps-cps}
+\end{figure}
+
+\begin{figure}[]
+\centering
+\begin{tabular}{rl}
+  $\dir{x}$ &= $x$\\
+  
+  $\dir{b}$ &= $b$\\
+  
+  $\dir{\lstinline!\{$r\;x\ldots$\}!}$
+  &= \lstinline!{$r\;x\ldots$}!\\
+
+  $\dir{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}$
+  &= \lstinline!(fun ($x\ldots$) $\dir{e}$)!\\
+
+  $\dir{\lstinline!(fun ($x\ldots$)\ $e$)!}$
+  &= \lstinline!(fun ($x\ldots k'$) $\cps{e}{k'}$)!\\
+
+  $\dir{\lstinline!($f^l\;x\ldots$)!}$
+  &= $ \begin{cases}
+    \lstinline!($f$ $x\ldots$)! & \mathrm{when}\,\allAtomic(l)\\
+    \lstinline!(let $k$ (fun ($y$) $y$) ($f$ $x\ldots$ $k$))! & \mathrm{when}\,\noneAtomic(l)\\
+  \end{cases} $\\
+
+  $\dir{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}$
+  &= \lstinline!(match $x$ ($p$ $\dir{e}$)$\ldots$)!\\
+
+  $\dir{\lstinline!(let$\;x\;$($f^l\;y\ldots$)$\;e$)!}$
+  &= \begin{lstlisting}
+(let $k$ (fun ($z$) $z$)
+  (let $x$ ($f$ $y\ldots$ $k$))
+    $\dir{e}$)
+  \end{lstlisting}\quad when $\noneAtomic(l)$\\
+
+  $\dir{\lstinline!(let$\;x\;c\;e$)!}$
+  &= \lstinline!(let $x$ $\dir{c}$ $\dir{e}$)!\\
+
+  $\dir{\lstinline!(error$\;s$)!}$ &= \lstinline!(error $s$)!
+\end{tabular}
+\caption{A translation for direct style terms}
+\label{fig:cps-direct}
+\end{figure}
+
+\begin{figure}[]
+\centering
+\begin{align*}
+  \trivial(x) &\quad\trivial(b)\\
+  trivial(\lstinline!(\{$r\;x\ldots$\})!)
+  &\quad\trivial(\lstinline!(fun ($x\ldots$)\ $e$)!)\\
+%
+  \trivial(\lstinline!($f^l\;x\ldots$)!) &\iff \allAtomic(l)\\
+%
+  \trivial(\lstinline!(match $\;x\;$($b\;e$)$\ldots$)!)%
+  &\iff \bigwedge\trivial(e)\ldots\\
+%
+  \trivial(\lstinline!(let$\;x\;c\;e$)!)%
+  &\iff \trivial(c) \wedge \trivial(e)
+\end{align*}
+\caption{The $\trivial$ predicate}
+\label{fig:cps-direct}
+\end{figure}
+
 
 \section{Selective Defunctionalization}\label{sec:selective-defun}
 
