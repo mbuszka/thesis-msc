@@ -326,6 +326,42 @@ The resulting store will contain a set of functions to which every variable (the
 This result will be used in Sections \ref{sec:selective-cps} and \ref{sec:selective-defun}.
 
 \section{Selective CPS}\label{sec:selective-cps}
+In this section we will formulate an algorithm for selectively transforming the program into continuation-passing style.
+All functions (anonymous and top-level) marked \lstinline!#:atomic! by the user will be kept in direct style.
+The \lstinline!main! function is implicitly marked as atomic since its interface should be preserved as it is an entry point of the interpreter.
+Primitive operations are treated as atomic at call-site.
+Atomic functions may call non-atomic ones by providing the called function an identity continuation.
+The algorithm uses the results of control-flow analysis to determine whether all functions to which a variable labeled $l$ in function position may evaluate are atomic -- denoted $\allAtomic(l)$ or none of them are atomic -- $\noneAtomic(l)$.
+When both atomic and non-atomic functions may be called the algorithm cannot proceed and signals an error in the source program.
+
+The algorithm consists of two mutually recursive transformations: $\cps{e}{k}$ in Figure \ref{fig:cps-cps} transforming a term $e$ into CPS with a program variable $k$ as a continuation and $\dir{e}$ in Figure \ref{fig:cps-direct} transforming a term $e$ which should be kept in direct style.
+
+The first five clauses of CPS translation deal with values.
+When a variable is encountered it may be immediately returned by applying continuation.
+In other cases the value must be let-bound in order to preserve the A-normal form of the term and then the continuation is applied to the introduced variable.
+The body $e$ of an anonymous function is translated using $\dir{e}$ when the function is marked atomic.
+When the function is not atomic a new variable $k'$ is appended to its parameter list and its body is translated using $\cps{e}{k'}$.
+The form of an application depends on atomicity of functions which may be applied.
+When none of them are atomic the continuation $k$ is passed to the function.
+When all of them are atomic the result of the call is let-bound and returned by applying the continuation $k$.
+Match expression is transformed by recursing on its branches.
+Since the continuation is always a program variable no code gets duplicated.
+When transforming a let expression the algorithm checks whether the bound command $c$ is $\trivial$ -- meaning it will only call atomic functions when evaluated.
+If it is then it can remain in direct style $\dir{c}$, no new continuation has to be introduced and the body can be transformed by $\cps{e}{k}$.
+If the command is non-trivial then a new continuation is created and bound to $k'$.
+This continuation uses the variable $x$ as its argument and its body is the body of let-expression $e$ transformed with the input continuation $k$.
+The bound command is transformed with the newly introduced continuation $k'$.
+Finally, the translation of \lstinline!error! throws out the continuation.
+
+The direct style transformation begins similarly to CPS one -- with five clauses for values.
+In case of an application the algorithm is symmetric: when all functions are atomic the call remains in direct style, when none of them are atomic a new identity continuation $k$ is constructed and is passed to the called function.
+A match expression is again transformed recursively.
+A let binding of a call to cps function gets special treatment to preserve A-normal by chaining allocation of identity continuation with the call.
+In other cases a let binding is transformed recursively.
+An \lstinline!error! expression is left untouched.
+
+Each top-level function definition in a program is transformed in the same fashion as anonymous functions.
+After the transformation the program is still in ANF and can be again analyzed by the abstract abstract machine of previous section. 
 \begin{figure}[]
 \centering
 \begin{tabular}{rl}
@@ -354,7 +390,7 @@ This result will be used in Sections \ref{sec:selective-cps} and \ref{sec:select
   $\cps{\lstinline!(let$\;x\;c\;e$)!}{k} $
   &= $ \begin{cases}
     \lstinline!(let $x$ $\dir{d}$ $\cps{e}{k}$)! &\mathrm{when}\,\trivial(c)\\
-    \lstinline!(let $k'$ (fun ($x$) $\cps{e}{k}$) $\cps{c}{k'}$)!
+    \lstinline!(let $k'$ (fun ($x$) $\cps{e}{k}$) $\cps{c}{k'}$)! &\mathrm{otherwise}
   \end{cases}$\\
 
   $\cps{\lstinline!(error$\;s$)!}{k}$ &= \lstinline!(error $s$)!
@@ -420,10 +456,78 @@ This result will be used in Sections \ref{sec:selective-cps} and \ref{sec:select
   &\iff \trivial(c) \wedge \trivial(e)
 \end{align*}
 \caption{The $\trivial$ predicate}
-\label{fig:cps-direct}
+\label{fig:cps-trivial}
 \end{figure}
 
 
 \section{Selective Defunctionalization}\label{sec:selective-defun}
+\begin{figure}
+\centering
+\begin{tabular}{rl}
+
+  $\bb{x}$ &= $ \begin{cases}
+    \lstinline!{Prim$_x$}! & \mathrm{when}\,\mathit{primOp}(x)\\
+    % x\text{is a reference to prim op}\\
+    \lstinline!{Top$_x$}!  & \mathrm{when}\,\mathit{topLevel}(x)\\
+    % x\text{is a reference to a top-level function which should be defunctionalized}\\
+    x & \mathrm{otherwise}
+  \end{cases} $\\
+
+  $\bb{b}$ &= $b$\\
+  
+  $\bb{\lstinline!\{$r\;x\ldots$\}!}$
+  &= \lstinline!{r $\bb{x}\ldots$}!\\
+
+  $\bb{\lstinline!(fun\ ($x\ldots$)\ $e$)$^l$!}$
+  &= $\begin{cases}
+    \lstinline!{Fun$_l$ $\mathit{fvs}(e)$}! &\text{when }\defun(l)\\
+    \lstinline!(fun ($x\ldots$) $\bb{e}$)! &\text{otherwise}
+  \end{cases}$\\
+
+  $\bb{\lstinline!(!f^{l'}\;x\ldots\lstinline!)!^l}$
+  &= $\begin{cases}
+    \lstinline!(apply$_l$ $f$ $\bb{x}\ldots$)! &\text{when }\defun(l')\\
+    \lstinline!($f\;\bb{x}\ldots$)! &\text{otherwise}
+  \end{cases}$\\
+
+  $\bb{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}$
+  &= \lstinline!(match $x$ ($p$ $\bb{e}$)$\ldots$)!\\
+
+  $\bb{\lstinline!(let$\;x\;c\;e$)!}$
+  &= \lstinline!(let $x$ $\bb{c}$ $\bb{e}$)!\\
+
+  $\bb{\lstinline!(error$\;s$)!}$ &= \lstinline!(error $s$)!
+\end{tabular}
+\caption{Selective defunctionalization algorithm for \IDL{}}
+\label{fig:defun}
+\end{figure}
+
+\begin{figure}
+\centering
+\begingroup
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{rrl}
+  $\mkBranch(x\ldots,$&$\delta)$
+  &= \lstinline!({Prim$_\delta$} ($\delta\;x\ldots$))!\\
+
+  $\mkBranch(x\ldots,$&$\lstinline!(def $f$ ($y\ldots$) e)!)$
+  &= \lstinline!({Top$_f$} ($f$ $x\ldots$))!\\
+
+  $\mkBranch(x\ldots,$&$\lstinline!(fun ($y\ldots$) $e$)$^l$!)$
+  &= \lstinline!({Fun$_l$ $\mathit{fvs}(e)$} $\bb{e}[y\mapsto x]$)!\\
+\end{tabular}
+\begin{tabular}{rl}
+  $\mkApply(l, \mathit{fn} \ldots)$
+  &= \begin{lstlisting}
+(def apply$_l$ ($f$ $x\ldots$)
+  (match $f$
+    $\mkBranch(x\ldots, \mathit{fn})\ldots$))
+  \end{lstlisting}
+\end{tabular}
+\endgroup
+\caption{Top-level apply function generation}
+\label{fig:defun-apply}
+\end{figure}
+
 
 \section{Let Inlining}
