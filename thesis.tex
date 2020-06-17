@@ -9,7 +9,8 @@
 
 \lstset{%
   basicstyle=\ttfamily,
-  mathescape=true
+  mathescape=true,
+  escapechar=@
 }
 
 % Allows to use lstinline in the math mode
@@ -48,6 +49,9 @@
 \newcommand{\defun}{\mathit{defun}}
 \newcommand{\mkBranch}{\mathit{mkBranch}}
 \newcommand{\mkApply}{\mathit{mkApply}}
+\newcommand{\semt}{\lstinline!semt!}
+
+\mathchardef\mh="2D
 
 % define "struts", as suggested by Claudio Beccari in
 %    a piece in TeX and TUG News, Vol. 2, 1993.

@@ -18,8 +18,10 @@ The meta-variable $\mathit{tp}$ is used in pattern matches which check whether a
 The patterns are referred to with variable $p$ and may be a variable, a literal value, a wildcard, a record pattern or a type test.
 Terms are denoted with variable $t$ and are one of variable, literal value, anonymous function, application, record constructor, let binding (which may destructure bound term with a pattern), pattern match or an error expression.
 
-In the remainder of this chapter I will describe the four stages of the transformation: translation to administrative normal form, selective translation to continuation-passing style, selective defunctionalization and let-inlining.
-I will also describe the algorithm used to compute the control-flow analysis.
+The transformation described in this chapter consists of three main stages: translation to administrative normal form, selective translation to continuation-passing style and selective defunctionalization.
+After defunctionalization the program is in the desired form of an abstract machine.
+The last step taken by the transformer is inlining of administrative let-bindings introduced by previous steps in order to obtain more readable results.
+In the remainder of this chapter I will describe the three main stages of the transformation and the algorithm used to compute the control-flow analysis.
 
 
 \begin{figure}
@@ -33,7 +35,7 @@ I will also describe the algorithm used to compute the control-flow analysis.
   $Term \ni t$ &::=& $x$ | $b$
               | \lstinline!(fun ($x\ldots$) $t$)!
               | \lstinline!($t$ $t\ldots$)!
-              | \lstinline!{$t$ $t\ldots$}!\\
+              | \lstinline!{$r$ $t\ldots$}!\\
               &|& \lstinline!(let $p$ $t$ $t$)!
               | \lstinline!(match $t$ ($p$ $t$)$\ldots$)!
               | \lstinline!(error $s$)!\\
@@ -461,6 +463,18 @@ After the transformation the program is still in ANF and can be again analyzed b
 
 
 \section{Selective Defunctionalization}\label{sec:selective-defun}
+The second step of the functional correspondence and the last stage of the transformation is selective defunctionalization.
+Top-level and anonymous functions may be annotated with \lstinline!#:no-defun! to skip defunctionalization of function spaces they belong to.
+In the algorithm of Figure \ref{fig:defun} the predicate $\defun$ specifies whether a function should be transformed.
+Predicates $\mathit{primOp}$ and $\mathit{topLevel}$ specify whether a variable refers to (taking into account the scoping rules) primitive operation or top-level function respectively.
+For each application point $l$ in the program we can utilize the results of control-flow analysis to obtain the set of functions which may be applied.
+If all of them should be defunctionalized ($\mathit{allDefun}$) then call to the generated apply function is introduced, when none of them should ($\mathit{noneDefun}$) then the application is left as is.
+The apply functions are generated using $\mkApply$ as specified in Figure \ref{fig:defun-apply} where the $\mathit{fn}\ldots$ is a list of functions corresponding to the application.
+After the transformation the program is no longer in A-normal form since variables referencing top-level functions may have been transformed into records.
+However it does not pose a problem since the majority of work has already been done and let-inlining does not require the program to be in ANF.
+
+
+
 \begin{figure}
 \centering
 \begin{tabular}{rl}
@@ -486,8 +500,8 @@ After the transformation the program is still in ANF and can be again analyzed b
 
   $\bb{\lstinline!(!f^{l'}\;x\ldots\lstinline!)!^l}$
   &= $\begin{cases}
-    \lstinline!(apply$_l$ $f$ $\bb{x}\ldots$)! &\text{when }\defun(l')\\
-    \lstinline!($f\;\bb{x}\ldots$)! &\text{otherwise}
+    \lstinline!(apply$_l$ $f$ $\bb{x}\ldots$)! &\text{when }\mathit{allDefun}(l')\\
+    \lstinline!($f\;\bb{x}\ldots$)! &\text{when }\mathit{noneDefun}(l')
   \end{cases}$\\
 
   $\bb{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}$
@@ -528,6 +542,3 @@ After the transformation the program is still in ANF and can be again analyzed b
 \caption{Top-level apply function generation}
 \label{fig:defun-apply}
 \end{figure}
-
-
-\section{Let Inlining}

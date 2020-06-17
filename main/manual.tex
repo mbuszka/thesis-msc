@@ -1,1 +1,92 @@
 \chapter{User's Manual}\label{chapter:user-manual}
+\subsection*{Installation}
+The semantic transformer -- \semt{} is built from source using \lstinline!cabal! -- a \textit{Haskell} package manager.
+To build the binary use \lstinline!cabal build! and to install the resulting binary use \lstinline!cabal install! in the root of the project.
+
+\subsection*{Tool usage}
+The basic mode of usage is to transform a \lstinline!file.rkt! containing an interpreter into \lstinline!out/file.rkt! which is a source file containing the transformed interpreter i.e. an abstract machine using the command \lstinline!semt file.rkt!.
+The options modifying the behavior of the tool can be displayed with the command \lstinline!semt --help!:
+\begin{lstlisting}
+Usage: semt FILE [-o|--output DIR] [-i|--intermediate] 
+            [-d|--debug] [-t|--self-test]
+  Transform an interpreter into an abstract machine.
+
+Available options:
+  FILE                     Source file with the interpreter.
+  -o,--output DIR          Output directory for generated
+                            files, defaults to ./out/
+  -i,--intermediate        Emit executable source files for
+                            each stage.
+  -d,--debug               Emit labeled source files for
+                            each stage.
+  -t,--self-test           Run raco test on each
+                            intermediate file; implies
+                            --intermediate
+  -h,--help                Show this help text
+\end{lstlisting}
+
+\subsection*{Source File Format}
+The tool assumes that the source file with an interpreter is a \textit{Racket} program.
+The interpreter itself (line 6) has to be placed between two comments (lines 4 and 8):
+\begin{lstlisting}[numbers=left]
+#racket
+$\dots$
+
+; begin interpreter
+
+;; interpreter goes here
+
+; end interpreter
+
+$\ldots$
+\end{lstlisting}
+
+The interpreter consists of a sequence of datatype, record and function definitions.
+One of the functions must be named \lstinline!main! and will serve as an entry point of the interpreter.
+The syntax of top-level definitions is given in Figure ???
+
+\begin{figure}
+\centering
+\begin{tabular}{rl}
+$\mathit{data\mh def}$
+& ::= \lstinline!(def-data $\mathit{tp\mh name}$ $\mathit{tp\mh elem}\dots$)!\\
+
+$\mathit{tp\mh elem}$
+& ::= $\mathit{tp}$ | $\mathit{record}$\\
+
+$\mathit{record}$
+& ::= \lstinline!{$\mathit{tp\mh name}$ $\mathit{record\mh field}\ldots$}!\\
+
+$\mathit{record\mh field}$
+& ::= $\mathit{tp}$
+  | $\mathit{var}$
+  | \lstinline![$\mathit{tp}$ $\mathit{var}$]!\\
+
+$\mathit{record\mh def}$
+& ::= \lstinline!(def-struct $\mathit{record}$)!\\
+
+$\mathit{base\mh tp}$
+& ::= \lstinline!String! | \lstinline!Integer! | \lstinline!Boolean!\\
+
+$\mathit{tp}$
+& ::= \lstinline!Any! | $\mathit{base\mh tp}$ | $\mathit{tp\mh name}$\\
+
+$\mathit{fun\mh def}$
+& ::= \lstinline!(def $\mathit{var}$ $\mathit{annot}\ldots$ ($\mathit{arg}\ldots$) $\mathit{term}$)!\\
+
+$\mathit{annot}$
+& ::= \lstinline!#:no-defun!
+    | \lstinline!#:atomic!
+    | \lstinline!#:name $\mathit{tp\mh name}$!
+    | \lstinline!#:apply $\mathit{var}$!\\
+
+$\mathit{arg}$
+& ::= $\mathit{var}$ | \lstinline![$\mathit{tp}$ $\mathit{var}$]!\\
+
+$\mathit{term}$
+& ::= $\mathit{var}$ 
+    | \lstinline!(fun $\mathit{annot}\ldots$ ($\mathit{arg}\ldots$) $\mathit{term}$)!
+    | \lstinline!($\mathit{term}$ $\mathit{term}\ldots$)!\\
+&   | \lstinline!{$\mathit{tp\mh name}$ $\mathit{term}\ldots$}!
+\end{tabular}
+\end{figure}
