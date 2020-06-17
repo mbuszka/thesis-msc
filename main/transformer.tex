@@ -64,10 +64,10 @@ This function decomposes the term according to the evaluation rules and uses two
 Function $\atomic{\cdot}$ transforms a continuation expecting an atomic expression (which are created when transforming commands) into one accepting any command by let-binding passed argument $c$ when necessary.
 Function $\anfSeq{\cdot}{\cdot}$ sequences computation of multiple expressions by creating a chain of let-bindings (using $\atomic{\cdot}$) and then calling the continuation with created variables.
 
-TODO:
-- better characterization of the ANF
-- describe the algorithm
-- explain why this particular form
+% TODO:
+% - better characterization of the ANF
+% - describe the algorithm
+% - explain why this particular form
 
 \begin{figure}
 \begin{center}
@@ -137,7 +137,7 @@ An interested reader should definitely acquaint themselves with the original wor
 \subsection*{A Machine Template}
 We will begin with a template of a machine for \IDL{} terms in A-normal form presented in Figure \ref{fig:anf-abstract-machine}.
 It is a CEK-style machine modified to explicitly allocate memory for values and continuations in an abstract store.
-The template is parameterized by implementation of the store $\sigma$ along with five operations: $\mathit{alloc}_v$, $\mathit{alloc}_k$, $\mathit{deref}_v$, $\mathit{deref}_k$ and $\mathit{copy}_v$.
+The template is parameterized by: implementation of the store $\sigma$ along with five operations: $\mathit{alloc}_v$, $\mathit{alloc}_k$, $\mathit{deref}_v$, $\mathit{deref}_k$ and $\mathit{copy}_v$; interpretation of primitive operations $\delta$ and implementation of $\mathit{match}$ function which interprets pattern matching.
 The store maps value addresses $\nu$ to values $v$ and continuation addresses $\kappa$ to continuations $k$.
 The environment maps program variables to value locations.
 The values on which machine operates are the following: base values $b$, primitive operations $\delta$, records with addresses as fields, closures and top-level functions.
@@ -153,15 +153,14 @@ An evaluation configuration contains an environment $\rho$, an expression $e$ an
 A continuation configuration holds an address $\nu$ of a value that has been computed so far and a pointer $\kappa$ to a resumption which should be applied next.
 
 The first case of the transition relation $\Rightarrow$ looks up a pointer for the variable $x$ in the environment $\rho$ and switches to the continuation mode.
-It may modify the store via $\mathit{copy}$ function which will become relevant when we consider an abstract instantiation of the machine.
-The next three cases deal with values by $\mathit{alloc}$ating the values in the store and switching to the continuation mode.
+It modifies the store via $\mathit{copy}$ function which ensures that every occurrence of a variable has a corresponding binding in the store.
+The next three cases deal with values by $\mathit{alloc}$ating them in the store and switching to the continuation mode.
 When the machine encounters a let-binding it allocates a continuation for the body $e$ of the expression and proceeds to evaluate the bound command $c$ with the new pointer $\kappa'$.
 In case of applications and match expressions the resulting configuration is decided using auxiliary functions $\mathit{apply}$ and $\mathit{match}$ respectively.
 Finally, in continuation mode, may transition if the continuation loaded from address $\kappa$ is a frame.
 In such a case the machine matches the stored pattern against the value pointed-to by $\nu$.
 Otherwise $\kappa$ points to a $\tuple{}$ instead and the machine has reached the final state.
 The auxiliary function $\mathit{apply}$ checks what kind of function is referenced by $\nu$ and proceeds accordingly.
-TODO match.
 
 \begin{figure}[ht]
 \begin{center}
@@ -247,7 +246,7 @@ $ \mathit{match}(\sigma, \rho, \nu, \kappa, \tuple{p, e}\ldots)$
 \end{figure}
 
 \subsection*{A Concrete Abstract Machine}
-The machine template can now be instantiated with a store implementation in order to obtain an abstract machine.
+The machine template can now be instantiated with a store, a $\mathit{match}$ implementation which finds the first matching branch and interpretation for primitive operations in order to obtain an abstract machine.
 By choosing $\mathit{Store}$ to be a mapping with infinite domain we can ensure that $\mathit{alloc}$ can always return a fresh address.
 In this setting the store-allocated continuations are just an implementation of a stack.
 The extra layer of indirection introduced by storing values in a store can also be disregarded as the machine operates on persistent values.
@@ -256,12 +255,15 @@ Therefore the machine corresponds to a CEK-style abstract machine which is a nat
 \subsection*{An Abstract Abstract Machine}\label{ss:aam}
 Let us now turn to a different instantiation of the template.
 Figure \ref{fig:aam} shows the missing pieces of an abstract abstract machine for \IDL{}.
-The store is represented as a pair of finite mappings from labels to sets of abstract values and continuations respectively.
 The abstract values use base type names $tp$ to represent any value of that type, abstract versions of primitive operations, records, closures and top-level functions.
+The interpretation of primitive operations must approximate their concrete counterparts.
+
+The store is represented as a pair of finite mappings from labels to sets of abstract values and continuations respectively.
 This bounding of store domain and range ensures that the state-space of the machine becomes finite and therefore can be used for computing an analysis.
 To retain soundness w.r.t. the concrete abstract machine the store must map a single address to multiple values to account for address reuse.
 This style of abstraction is fairly straightforward as noted by \cite{aam} and used in textbooks \cite{popa}.
 When instantiated with this store, the transition relation $\Rightarrow$ becomes nondeterministic as pointer $\mathit{deref}$erencing nondeterministically returns one of the values available in the store.
+Additionally the implementation of $\mathit{match}$ function is also nondeterministic in choice of a branch to match against.
 This machine is not yet suitable for computing the analysis as the state space is still too large since every machine configuration has its own copy of the store.
 To circumvent this problem a standard technique of widening \cite{popa} can be employed.
 In particular, following \cite{aam}, we will use a global store.
@@ -271,7 +273,6 @@ The resulting stores $\sigma'$ are merged together and with the original store t
 The partial configurations $C'$ are added to the initial set of configurations $C$.
 The transition relation $\Rightarrow_a$ is deterministic so it can be treated as a function.
 This function is monotone on a finite lattice and therefore is amenable to fixed-point iteration.
-TODO comments on alloc, deref, copy and match.
 
 \begin{figure}
 \begin{center}
@@ -464,14 +465,15 @@ After the transformation the program is still in ANF and can be again analyzed b
 
 \section{Selective Defunctionalization}\label{sec:selective-defun}
 The second step of the functional correspondence and the last stage of the transformation is selective defunctionalization.
-Top-level and anonymous functions may be annotated with \lstinline!#:no-defun! to skip defunctionalization of function spaces they belong to.
+The goal is to defunctionalize function spaces deemed interesting by the author of the program.
+To this end top-level and anonymous functions may be annotated with \lstinline!#:no-defun! to skip defunctionalization of function spaces they belong to.
 In the algorithm of Figure \ref{fig:defun} the predicate $\defun$ specifies whether a function should be transformed.
 Predicates $\mathit{primOp}$ and $\mathit{topLevel}$ specify whether a variable refers to (taking into account the scoping rules) primitive operation or top-level function respectively.
 For each application point $l$ in the program we can utilize the results of control-flow analysis to obtain the set of functions which may be applied.
-If all of them should be defunctionalized ($\mathit{allDefun}$) then call to the generated apply function is introduced, when none of them should ($\mathit{noneDefun}$) then the application is left as is.
-The apply functions are generated using $\mkApply$ as specified in Figure \ref{fig:defun-apply} where the $\mathit{fn}\ldots$ is a list of functions corresponding to the application.
+If all of them should be defunctionalized ($\mathit{allDefun}$) then a call to the generated apply function is introduced, when none of them should ($\mathit{noneDefun}$) then the application is left as is, if neither condition holds then an error in the source program is signaled.
+The apply functions are generated using $\mkApply$ as specified in Figure \ref{fig:defun-apply} where the $\mathit{fn}\ldots$ is a list of functions which may be applied.
 After the transformation the program is no longer in A-normal form since variables referencing top-level functions may have been transformed into records.
-However it does not pose a problem since the majority of work has already been done and let-inlining does not require the program to be in ANF.
+However it does not pose a problem since the majority of work has already been done and the last step -- let-inlining does not require the program to be in ANF.
 
 
 
