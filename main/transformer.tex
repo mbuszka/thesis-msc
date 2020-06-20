@@ -4,9 +4,9 @@ Although the two main transformations considered here are widely known, they are
 As the goal of the algorithm is to produce a definition of an abstract machine, to be read as a source code, care has to be taken to produce readable results.
 To this end I chose to allow for partial CPS translation, with functions which should be left alone marked with annotations.
 This approach allows one to specify helper functions whose control-flow is not particularly interesting to capture such as environment lookups.
-The defunctionalization is usually presented as a manual transformation with human-specified function spaces or in a type directed fashion where all functions of a particular type end up in the same bag.
+The defunctionalization is usually presented as a manual transformation with human-specified function spaces or in a type directed fashion.
 Neither of these approaches are satisfying for the purposes of a semantics transformer as the goal is to produce the result automatically and to uncover the operational properties of the evaluator.
-Additionally I wanted to allow for partial defunctionalization of programs as it permits one to keep some parts of the machine abstract (e.g. functions modelling a heap or an environment).
+Additionally I wanted to allow for partial defunctionalization of programs as it permits one to keep some parts of the machine abstract (e.g., functions modelling a heap or an environment).
 I chose to employ the control-flow analysis to guide partitioning of function spaces as it approximates the runtime behavior of programs.
 This approach allows for functions of the same type to land in different spaces based on their usage and it performed satisfactory in experiments I have conducted.
 Finally, as the transformation generates new variables and moves code around we have to keep them readable.
@@ -339,6 +339,103 @@ When both atomic and non-atomic functions may be called the algorithm cannot pro
 
 The algorithm consists of two mutually recursive transformations: $\cps{e}{k}$ in Figure \ref{fig:cps-cps} transforming a term $e$ into CPS with a program variable $k$ as a continuation and $\dir{e}$ in Figure \ref{fig:cps-direct} transforming a term $e$ which should be kept in direct style.
 
+\begin{figure}[ht]
+  \centering
+  \begin{tabular}{rl}
+    $\cps{x}{k}$ &= \lstinline!($k$ $x$)!\\
+    
+    $\cps{b}{k}$ &= \lstinline!(let $x$ $b$ ($k$ $x$))!\\
+    
+    $\cps{\lstinline!\{$r\;x\ldots$\}!}{k}$
+    &= \lstinline!(let $y$ {$r\;x\ldots$} ($k$ $y$))!\\
+  
+    $\cps{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}{k}$
+    &= \lstinline!(let $y$ (fun ($x\ldots$) $\dir{e}$) ($k$ $y$))!\\
+  
+    $\cps{\lstinline!(fun ($x\ldots$)\ $e$)!}{k}$
+    &= \lstinline!(let $y$ (fun ($x\ldots k'$) $\cps{e}{k'}$) ($k$ $y$))!\\
+  
+    $\cps{\lstinline!($f^l\;x\ldots$)!}{k}$
+    &= $ \begin{cases}
+      \lstinline!($f$ $x\ldots$ $k$)! & \mathrm{when}\,\noneAtomic(l)\\
+      \lstinline!(let $y$ ($f$ $x\ldots$) ($k$ $y$))! & \mathrm{when}\,\allAtomic(l)\\
+    \end{cases} $\\
+  
+    $\cps{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}{k}$
+    &= \lstinline!(match $x$ ($p$ $\cps{e}{k}$)$\ldots$)!\\
+  
+    $\cps{\lstinline!(let$\;x\;c\;e$)!}{k} $
+    &= $ \begin{cases}
+      \lstinline!(let $x$ $\dir{d}$ $\cps{e}{k}$)! &\mathrm{when}\,\trivial(c)\\
+      \lstinline!(let $k'$ (fun ($x$) $\cps{e}{k}$) $\cps{c}{k'}$)! &\mathrm{otherwise}
+    \end{cases}$\\
+  
+    $\cps{\lstinline!(error$\;s$)!}{k}$ &= \lstinline!(error $s$)!
+  \end{tabular}
+  \caption{A translation for CPS terms}
+  \label{fig:cps-cps}
+  \end{figure}
+  
+  \begin{figure}[]
+  \centering
+  \begin{tabular}{rl}
+    $\dir{x}$ &= $x$\\
+    
+    $\dir{b}$ &= $b$\\
+    
+    $\dir{\lstinline!\{$r\;x\ldots$\}!}$
+    &= \lstinline!{$r\;x\ldots$}!\\
+  
+    $\dir{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}$
+    &= \lstinline!(fun ($x\ldots$) $\dir{e}$)!\\
+  
+    $\dir{\lstinline!(fun ($x\ldots$)\ $e$)!}$
+    &= \lstinline!(fun ($x\ldots k'$) $\cps{e}{k'}$)!\\
+  
+    $\dir{\lstinline!($f^l\;x\ldots$)!}$
+    &= $ \begin{cases}
+      \lstinline!($f$ $x\ldots$)! & \mathrm{when}\,\allAtomic(l)\\
+      \lstinline!(let $k$ (fun ($y$) $y$) ($f$ $x\ldots$ $k$))! & \mathrm{when}\,\noneAtomic(l)\\
+    \end{cases} $\\
+  
+    $\dir{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}$
+    &= \lstinline!(match $x$ ($p$ $\dir{e}$)$\ldots$)!\\
+  
+    $\dir{\lstinline!(let$\;x\;$($f^l\;y\ldots$)$\;e$)!}$
+    &= \begin{lstlisting}
+  (let $k$ (fun ($z$) $z$)
+    (let $x$ ($f$ $y\ldots$ $k$))
+      $\dir{e}$)
+    \end{lstlisting}\quad when $\noneAtomic(l)$\\
+  
+    $\dir{\lstinline!(let$\;x\;c\;e$)!}$
+    &= \lstinline!(let $x$ $\dir{c}$ $\dir{e}$)!\\
+  
+    $\dir{\lstinline!(error$\;s$)!}$ &= \lstinline!(error $s$)!
+  \end{tabular}
+  \caption{A translation for direct style terms}
+  \label{fig:cps-direct}
+  \end{figure}
+  
+  \begin{figure}[]
+  \centering
+  \begin{align*}
+    \trivial(x) &\quad\trivial(b)\\
+    trivial(\lstinline!(\{$r\;x\ldots$\})!)
+    &\quad\trivial(\lstinline!(fun ($x\ldots$)\ $e$)!)\\
+  %
+    \trivial(\lstinline!($f^l\;x\ldots$)!) &\iff \allAtomic(l)\\
+  %
+    \trivial(\lstinline!(match $\;x\;$($b\;e$)$\ldots$)!)%
+    &\iff \bigwedge\trivial(e)\ldots\\
+  %
+    \trivial(\lstinline!(let$\;x\;c\;e$)!)%
+    &\iff \trivial(c) \wedge \trivial(e)
+  \end{align*}
+  \caption{The $\trivial$ predicate}
+  \label{fig:cps-trivial}
+  \end{figure}
+
 The first five clauses of CPS translation deal with values.
 When a variable is encountered it may be immediately returned by applying continuation.
 In other cases the value must be let-bound in order to preserve the A-normal form of the term and then the continuation is applied to the introduced variable.
@@ -349,7 +446,7 @@ When none of them are atomic the continuation $k$ is passed to the function.
 When all of them are atomic the result of the call is let-bound and returned by applying the continuation $k$.
 Match expression is transformed by recursing on its branches.
 Since the continuation is always a program variable no code gets duplicated.
-When transforming a let expression the algorithm checks whether the bound command $c$ is $\trivial$ -- meaning it will only call atomic functions when evaluated.
+When transforming a let expression the algorithm checks whether the bound command $c$ is $\trivial$ -- meaning it will only call atomic functions when evaluated (defined in Figure \ref{fig:cps-trivial}).
 If it is then it can remain in direct style $\dir{c}$, no new continuation has to be introduced and the body can be transformed by $\cps{e}{k}$.
 If the command is non-trivial then a new continuation is created and bound to $k'$.
 This continuation uses the variable $x$ as its argument and its body is the body of let-expression $e$ transformed with the input continuation $k$.
@@ -365,102 +462,7 @@ An \lstinline!error! expression is left untouched.
 
 Each top-level function definition in a program is transformed in the same fashion as anonymous functions.
 After the transformation the program is still in ANF and can be again analyzed by the abstract abstract machine of previous section. 
-\begin{figure}[]
-\centering
-\begin{tabular}{rl}
-  $\cps{x}{k}$ &= \lstinline!($k$ $x$)!\\
-  
-  $\cps{b}{k}$ &= \lstinline!(let $x$ $b$ ($k$ $x$))!\\
-  
-  $\cps{\lstinline!\{$r\;x\ldots$\}!}{k}$
-  &= \lstinline!(let $y$ {$r\;x\ldots$} ($k$ $y$))!\\
 
-  $\cps{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}{k}$
-  &= \lstinline!(let $y$ (fun ($x\ldots$) $\dir{e}$) ($k$ $y$))!\\
-
-  $\cps{\lstinline!(fun ($x\ldots$)\ $e$)!}{k}$
-  &= \lstinline!(let $y$ (fun ($x\ldots k'$) $\cps{e}{k'}$) ($k$ $y$))!\\
-
-  $\cps{\lstinline!($f^l\;x\ldots$)!}{k}$
-  &= $ \begin{cases}
-    \lstinline!($f$ $x\ldots$ $k$)! & \mathrm{when}\,\noneAtomic(l)\\
-    \lstinline!(let $y$ ($f$ $x\ldots$) ($k$ $y$))! & \mathrm{when}\,\allAtomic(l)\\
-  \end{cases} $\\
-
-  $\cps{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}{k}$
-  &= \lstinline!(match $x$ ($p$ $\cps{e}{k}$)$\ldots$)!\\
-
-  $\cps{\lstinline!(let$\;x\;c\;e$)!}{k} $
-  &= $ \begin{cases}
-    \lstinline!(let $x$ $\dir{d}$ $\cps{e}{k}$)! &\mathrm{when}\,\trivial(c)\\
-    \lstinline!(let $k'$ (fun ($x$) $\cps{e}{k}$) $\cps{c}{k'}$)! &\mathrm{otherwise}
-  \end{cases}$\\
-
-  $\cps{\lstinline!(error$\;s$)!}{k}$ &= \lstinline!(error $s$)!
-\end{tabular}
-\caption{A translation for CPS terms}
-\label{fig:cps-cps}
-\end{figure}
-
-\begin{figure}[]
-\centering
-\begin{tabular}{rl}
-  $\dir{x}$ &= $x$\\
-  
-  $\dir{b}$ &= $b$\\
-  
-  $\dir{\lstinline!\{$r\;x\ldots$\}!}$
-  &= \lstinline!{$r\;x\ldots$}!\\
-
-  $\dir{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}$
-  &= \lstinline!(fun ($x\ldots$) $\dir{e}$)!\\
-
-  $\dir{\lstinline!(fun ($x\ldots$)\ $e$)!}$
-  &= \lstinline!(fun ($x\ldots k'$) $\cps{e}{k'}$)!\\
-
-  $\dir{\lstinline!($f^l\;x\ldots$)!}$
-  &= $ \begin{cases}
-    \lstinline!($f$ $x\ldots$)! & \mathrm{when}\,\allAtomic(l)\\
-    \lstinline!(let $k$ (fun ($y$) $y$) ($f$ $x\ldots$ $k$))! & \mathrm{when}\,\noneAtomic(l)\\
-  \end{cases} $\\
-
-  $\dir{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}$
-  &= \lstinline!(match $x$ ($p$ $\dir{e}$)$\ldots$)!\\
-
-  $\dir{\lstinline!(let$\;x\;$($f^l\;y\ldots$)$\;e$)!}$
-  &= \begin{lstlisting}
-(let $k$ (fun ($z$) $z$)
-  (let $x$ ($f$ $y\ldots$ $k$))
-    $\dir{e}$)
-  \end{lstlisting}\quad when $\noneAtomic(l)$\\
-
-  $\dir{\lstinline!(let$\;x\;c\;e$)!}$
-  &= \lstinline!(let $x$ $\dir{c}$ $\dir{e}$)!\\
-
-  $\dir{\lstinline!(error$\;s$)!}$ &= \lstinline!(error $s$)!
-\end{tabular}
-\caption{A translation for direct style terms}
-\label{fig:cps-direct}
-\end{figure}
-
-\begin{figure}[]
-\centering
-\begin{align*}
-  \trivial(x) &\quad\trivial(b)\\
-  trivial(\lstinline!(\{$r\;x\ldots$\})!)
-  &\quad\trivial(\lstinline!(fun ($x\ldots$)\ $e$)!)\\
-%
-  \trivial(\lstinline!($f^l\;x\ldots$)!) &\iff \allAtomic(l)\\
-%
-  \trivial(\lstinline!(match $\;x\;$($b\;e$)$\ldots$)!)%
-  &\iff \bigwedge\trivial(e)\ldots\\
-%
-  \trivial(\lstinline!(let$\;x\;c\;e$)!)%
-  &\iff \trivial(c) \wedge \trivial(e)
-\end{align*}
-\caption{The $\trivial$ predicate}
-\label{fig:cps-trivial}
-\end{figure}
 
 
 \section{Selective Defunctionalization}\label{sec:selective-defun}

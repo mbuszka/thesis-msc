@@ -1,6 +1,6 @@
 \chapter{The Functional Correspondence}\label{chapter:functional-correspondence}
 The functional correspondence between evaluators and abstract machines is a technique for mechanical derivation of an abstract machine from a given evaluator.
-The technique was first characterized and described in \cite{functional-correspondence} and then later studied in context of various object-languages and their evaluators in (TODO more references).
+The technique was first characterized and described in \cite{functional-correspondence} and then later studied in context of various object-languages and their evaluators in \cite{ager-interpreter-compiler,ager-call-by-need,pirog-stg,biernacki-logic-engine,biernacka-delimited-continuations,ager-monadic-evaluators,danvy-object-oriented,jedynak-ltac}.
 The input of the derivation is an evaluator written in some functional meta-language.
 It usually corresponds to a variant of denotational semantics (particularly in case of so-called meta-circular interpreters) or big-step operational semantics.
 The result of the derivation is a collection of mutually tail-recursive, first-order functions in the same meta-language.
@@ -29,7 +29,7 @@ Let us begin by classifying expressions into trivial and serious ones.
 An expression is trivial if evaluating it always returns a value.
 Since we cannot in general decide whether an arbitrary expression is trivial we will use a safe approximation: an expression is trivial if it is a variable, a function definition, a primitive operation call or a structure constructor with only trivial expressions as sub-terms.
 We will only allow applications, match expressions and constructors with trivial sub-expressions.
-Additionally we would like to consider some expressions trivial due to their interpretation (e.g. environment lookups) even though they are serious.
+Additionally we would like to consider some expressions trivial due to their interpretation (e.g., environment lookups) even though they are serious.
 In order to retain ability to build interesting programs, every function will accept an additional argument -- a continuation which specifies what should be done next.
 
 The interesting clauses of the algorithm for simple CPS translation of expressions in \IDL{} are presented in Figure \ref{fig:cps-translation}.

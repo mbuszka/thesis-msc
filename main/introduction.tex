@@ -1,44 +1,117 @@
 \chapter{Introduction}\label{chapter:introduction}
+% TODO Mocniejsze podkreślenie motywacji
+% TODO Cytowania do maszyn abstrakcyjnych
+% TODO Cytowanie do semantyki naturalnej Kahn 87
+
+% TODO Lepsza pozycja dla functional correspondence, podkreślić szczególność
+% Ludzie chcą maszyn abstr. Landin, Felleisen, Cregut, Krivine, paper Functional runtime systems
+% TODO przecinki przed i po  e.g. i.e.
+% TODO kolorowanie składni w listingach
+% TODO cytowania w opisach formatów semantycznych
+% TODO poukładać figury przy opisach
+% wstęp
+%   - co ja robię (co jest przedmiotem)
+%   - co osiągnąłem
+%   - po co ja to robię, jaka jest potrzeba
+%   - jak ja to robię (AAM jako podstawa)
+% Zajrzeć do prac związanych z defunkcjonalizacją i zacytować (być może we wstępie np. tam gdzie mowa o automatyzacji)
+% - Polymorphic Typed Defunctionalization and Concretization
+% - A denotational investigation of defunctionalization
+% - Design and correctness of program transformations based on control-flow analysis (na przykład koło aam, albo tylko zaznaczyć i rozwinąć w rozdziale o related work)
+% - Prace o praktycznym zastosowaniu cps
+
+% - Przykłady zasługują na własny 4 rozdział: Case Studies
+% - A na koniec conclusions, related work, future work
 What is the meaning of a given computer program?
 
 The field of formal semantics of programming languages seeks to provide tools to answer such a question.
-Denotational semantics allow one to relate programs to mathematical objects which describe their behavior.
-Operational semantics provide means to characterize evaluation of programs by building a relation between programs and final values in case of big-step semantics; by defining a relation allowing for step-by-step transformation of programs in case of small-step semantics; or by specifying an abstract machine with a set of states and a transition function.
-These semantic formats all allow for systematic definition of programming languages but differ in style and type of reasoning they allow as well as their limitations.
+Denotational semantics \cite{scott-denotational-semantics} allow one to relate programs to mathematical objects which describe their behavior.
+Operational semantics provide means to characterize evaluation of programs by building a relation between terms and final values in case of natural (aka big-step) semantics \cite{kahn-natural-semantics} and pretty-big-step semantics \cite{pretty-big-step-semantics}; by defining a step-by-step transition system on program terms in case of structured operational (aka small-step) semantics \cite{plotkin-sos} and reduction semantics \cite{felleisen-reduction-semantics};
+ or by specifying an abstract machine with a set of states and a transition relation between those states.
+All of these semantic formats enable systematic definition of programming languages but differ in style and type of reasoning they allow as well as in their limitations. 
 
-Another approach is to provide an interpreter for the language in question (which I will call the \emph{object}-language) written in another language (to which I will refer as the \emph{meta}-language).
-These definitional interpreters \cite{reynolds} may also be classified into groups similar to the formal semantics.
-Starting with the most abstract and concise meta-circular interpreters which use meta-language constructs to interpret same constructs in object-language (e.g. using anonymous functions to model functional values, using conditionals for \textit{if} expressions).
-Via various evaluators with some constructs interpreted by simpler language features (e.g. with environments represented as lists or dictionaries instead of functions) but still relying on the evaluation order of the meta-language.
-Ending with a first-order machine-like interpreters which use an explicit stack for handling control-flow of the object-language.
+% Maybe add citation
+Diversity of formats of operational semantics and trade-offs they impose often necessitates specifying the semantics of a calculus in more than one format, e.g., one might use natural semantics in order to show a program transformation correct but will have to also specify small-step operational semantics for proofs of type safety and characterization of non-terminating computations.
+Of course when multiple specifications are provided one should also prove them compatible.
+As it implies serious amount of work, it comes as no surprise that research has been conducted on means of mechanizing or even automating this task.
+In their paper \cite{poulsen-deriving-pretty-big-step} Poulsen and Mosses show an automatic procedure for obtaining pretty-big-step semantics from small-step ones.
+The most recent result is a 2019 paper by Vesely and Fisher \cite{one-step-at-a-time} who describe an automatic transformation in other direction: from big-step semantics into its small-step counterpart.
 
-In his paper \cite{reynolds} Reynolds summarizes techniques which allow one to transform high-level definitional interpreters into lower-level ones using two well-known program transformations: transformation into continuation-passing style and defunctionalization.
-This connection between evaluators on different levels of abstraction has later been studied by Ager et al.\cite{functional-correspondence} who use it to relate several abstract machines for \LC{} with interpreters embodying their evaluation strategies and called it the functional correspondence.
-The technique has proven to be very useful for deriving a correct-by-construction abstract machine given an evaluator in a diverse set of languages \cite{functional-correspondence,biernacki-logic-engine,biernacka-delimited-continuations,ager-monadic-evaluators}.
+Another line of work is that of constructing abstract machines.
+Starting with Landin's SECD machine \cite{landin-secd} for \LC{}, many abstract machines have been proposed for various evaluation strategies and with differing assumptions on capabilities of the runtime (e.g., substitution vs environments).
+Notable work includes: Krivine's machine \cite{krivine-machine} for call-by-name reduction, Felleisen and Friedman's CEK machine \cite{felleisen-cek} and Cr\'{e}gut's machine \cite{cregut-normal} for normalization of $\lambda$-terms in normal order.
+Manual construction of an abstract machine for a given evaluation discipline can be challenging and also requires a proof of compatibility w.r.t the source semantics, therefore methods for deriving the machines have been developed.
+Danvy and Nielsen's refocusing framework \cite{refocusing} gave raise to an automatic procedure for transforming reduction semantics into an abstract machine \cite{refocusing-auto,refocusing-generalized}.
+Ager shows a mechanical method of deriving abstract machines from L-attributed natural semantics \cite{ager-natural-semantics} while Hannan and Miller present derivations of abstract machines for call-by-value and call-by-name reduction strategies \cite{hannan-big-step-to-am} via program transformations.
+Last but not least, Danvy et al. introduced the functional correspondence between evaluators and abstract machines \cite{functional-correspondence} which appears to be the most successful technique.
+% refocusing reduction-semantics -> am \cite{refocusing,refocusing-auto,refocusing-generalized}
+% natural semantics -> am \cite{ager-natural-semantics}
+% natural semantics -> am \cite{hannan-big-step-to-am}
+% big-step -> small-step \cite{one-step-at-a-time}
+% small-step -> pretty-big-step \cite{poulsen-deriving-pretty-big-step}
+
+In order to describe the functional correspondence in greater detail let us first turn to another approach to defining a programming language: providing an interpreter for the language in question (which I will call the \emph{object}-language) written in another language (to which I will refer as the \emph{meta}-language).
+These definitional interpreters \cite{reynolds} can be placed on a spectrum from most abstract to most explicit.
+At the abstract end lie the concise meta-circular interpreters which use meta-language constructs to interpret same constructs in object-language (e.g., using anonymous functions to model functional values, using conditionals for \textit{if} expressions).
+In the middle one might place various evaluators with some constructs interpreted by simpler language features (e.g., with environments represented as lists or dictionaries instead of functions) but still relying on the evaluation order of the meta-language.
+The explicit end is occupied by first-order machine-like interpreters which use an encoding of a stack for handling control-flow of the object-language.
+% Trochę pozmieniać te zdania, żeby brzmiało bardziej gramatycznie
+
+% O functional corespondence
+% Wspomnieć jak bardzo zaskakująca jest ta derywacja np. wspomnieć maszynę Cregut i jak się odwróci derywację to otrzymuje się model lc dla silnej normalizacji.
+% Podkreślić jak odległe światy/semantyki potrafi powiązać
+In his seminal paper \cite{reynolds} Reynolds introduces two techniques: transformation to continuation-passing style and defunctionalization, which allow one to transform high-level definitional interpreters into lower-level ones.
+% Poprawić, żeby nie brzmiało, że Reynolds po kimś powtarzał
+This connection between evaluators on different levels of abstraction has later been studied by Danvy et al.\cite{functional-correspondence} who use it to relate several abstract machines for \LC{} with interpreters embodying their evaluation strategies and called it the functional correspondence.
+The technique has proven to be very useful for deriving a correct-by-construction abstract machine given an evaluator in a diverse set of languages and calculi including normal and applicative order \LC{} evaluation \cite{functional-correspondence} and normalization \cite{ager-interpreter-compiler}, call-by-need strategy \cite{ager-call-by-need} and \textit{Haskell}'s STG language \cite{pirog-stg}, logic engine \cite{biernacki-logic-engine}, delimited control \cite{biernacka-delimited-continuations}, computational effects \cite{ager-monadic-evaluators}, object-oriented calculi \cite{danvy-object-oriented} and \textit{Coq}'s tactic language \cite{jedynak-ltac}.
+% A functional correspondence between lazy evaluators ...
+% Danvy ok 2010 coś dla języka obiektowego
+% Biernacki 2013 functional correspondence dla ltac
+% 2010 Haskell Symposium M. Piróg derywacja dla STG
+Besides the breadth of applications the functional correspondence proved able to relate semantic formats from opposing ends of the abstraction spectrum, e.g.,
+a meta-circular interpreter encoding call-by-value denotational semantics for \LC{} with CEK machine or a normal order normalization function with a strong version of Krivine's machine \cite{ager-interpreter-compiler}.
 Despite these successes and its mechanical nature, the functional correspondence has not yet been transformed into a working tool which would perform the derivation automatically.
 
+% Wspomnieć o SOS Plotkina 81, semantyka redukcyjna też cytat (Felleisen), pretty-big-step
+% (może footnote)
+% Akapit o tym, że często potrzebne są opisy jednego języka w wielu formatach interesuje nas możliwość, zagadnienie: derywacja jednego formatu z drugiego
+% Wspomnieć o refocusingu jako mechanicznej metodzie: Danvy, Nielsen
+% Maszyny z semantyki naturalnej (L-attributed grammars) Ager
+% Dane Miller (powiązanie semantyki naturalnej z maszynami abstrakcyjnymi)
+% Peter Mosses (Pretty big step semantics and sos)
+% Wiele prac w których trzeba wymyślić maszynę abstrakcyjną i udowodnić zgodność z drugą semantyką
+% Potrzeba na mechaniczną możliwość derywacji maszyny z semantyki wyższego poziomu
+% Wspomnieć paper Vesely i pokazać, że to jest coś czym się aktualnie ludzie zajmują
 Therefore it was my goal to give an algorithmic presentation of the functional correspondence and implement this algorithm in order to build a semantics transformer.
 In this thesis I describe all steps required to successfully convert the human-aided derivation into a computer algorithm for transforming evaluators into a representation of an abstract machine.
 In particular I characterize the control-flow analysis as the basis for both selective continuation-passing style transformation and partial defunctionalization.
-This algorithm has also been implemented in the \emph{Haskell} programming language giving raise to a tool --- \texttt{semt} --- performing the transformation.
+In order to obtain correct, useful and computable analysis I employ the abstracting abstract machines methodology \cite{aam} which allows for deriving the analysis from an abstract machine for the meta-language.
+This derivation proved very capable in handling the non-trivial language containing records, anonymous functions and pattern matching.
+The resulting analysis enables automatic transformation of user specified parts of the interpreter as opposed to whole-program-only transformations.
+I implemented the algorithm in the \emph{Haskell} programming language giving raise to a tool --- \texttt{semt} --- performing the transformation.
 I evaluated the performance of the tool on multiple interpreters for a diverse set of programming language calculi.
 
-The rest of this thesis is structured as following:
+The rest of this thesis is structured as follows:
 In the remainder of this chapter I introduce the \textit{Interpreter Definition Language} which is the meta-language accepted by the transformer and will be used in example evaluators throughout the thesis; I also compare the semantics formats with styles of interpreters to which they correspond.
-In Chapter \ref{chapter:functional-correspondence} I describe the functional correspondence and its constituents.
-In Chapter \ref{chapter:transformer} I show the algorithmic characterization of the correspondence.
-In Chapter \ref{chapter:evaluation} I evaluate the performance of the tool and discuss related work.
+In Chapter \ref{chapter:functional-correspondence}, I describe the functional correspondence and its constituents.
+In Chapter \ref{chapter:transformer}, I show the algorithmic characterization of the correspondence.
+In Chapter \ref{chapter:case-studies}, I showcase the performance of the tool on a selection of case studies.
+In Chapter \ref{chapter:conclusions}, I discuss related work, point at future avenues for improvement and conclude. % TODO rewrite this sentence
 Appendices contain user's and developer's manual for the semantic transformer.
 
 I assume that the reader is familiar with \LC{} and its semantics (both normal (call-by-name) and applicative (call-by-value) order reduction).
 Familiarity with formal semantics of programming languages (both denotational and operational) is also assumed although not strictly required for understanding of the main subject of this thesis.
 The reader should also be experienced in using a higher-order functional language with pattern matching.
+% Co z control-flow analysis
 
 \section{Interpreter Definition Language}\label{sec:idl}
 The \emph{Interpreter Definition Language} or \IDL{} is the meta-language used by \semt{} -- a semantic transformer.
 It is a purely functional, higher-order, dynamically (strongly) typed language with strict evaluation order.
 It features named records and pattern matching which allow for convenient modelling of abstract syntax of the object-language as well as base types of integers, booleans and strings.
 The concrete syntax is in fully parenthesized form and the programs can be embedded in a \texttt{Racket} source file using the provided library with syntax definitions.
+A more detailed introduction along with usage instructions is available in 
+Appendix \ref{chapter:user-manual}.
+
 As shown in Figure \ref{fig:lambda-calc-interp} a typical interpreter definition consists of several top-level functions which may be mutually recursive.
 The \lstinline!def-data! form introduces a datatype definition.
 In our case it defines a type for terms of \LC{} -- \lstinline!Term!.
@@ -47,9 +120,9 @@ A datatype definition may refer to itself, other previously defined datatypes an
 The \texttt{main} function is treated as an entry point for the evaluator and must have its arguments annotated with their type.
 
 The \lstinline!match! expression matches an expression against a list of patterns.
-Patterns may be variables (which will be bound to the value being matched), wildcards \lstinline!_!, base type patterns e.g. \lstinline![String x]! or record patterns e.g. \lstinline!{Abs x body}!.
+Patterns may be variables (which will be bound to the value being matched), wildcards \lstinline!_!, base type patterns, e.g., \lstinline![String x]! or record patterns, e.g., \lstinline!{Abs x body}!.
 The \lstinline!fun! form introduces anonymous function, \lstinline!error "..."! stops execution and signals the error.
-Finally, application of a function is written as in \textit{Scheme}, i.e. as a list of expressions (e.g. \lstinline!(eval init term)!).
+Finally, application of a function is written as in \textit{Scheme}, i.e., as a list of expressions (e.g., \lstinline!(eval init term)!).
 
 \begin{figure}
     \centering
@@ -77,17 +150,18 @@ Finally, application of a function is written as in \textit{Scheme}, i.e. as a l
 \end{figure}
 
 \section{Semantic Formats}
-In this thesis I consider three widely recognized (TODO refs) semantic formats: denotational semantics, big-step operational semantics and abstract machines.
+In this thesis I consider three widely recognized semantic formats: denotational semantics, big-step operational semantics and abstract machines.
 These formats make different trade-offs with respect to conciseness of definition, explicitness of specification of behavior of the object-language and power or degree of complication of the meta-language.
 I assume familiarity with these formats and the rest of this section should be treated as a reminder rather than an introduction.
 Nevertheless I will explain how these mathematical formalisms correspond to evaluators in a functional programming language.
 
 \subsection*{Denotational Semantics}
-In this format one has to define a mapping from program terms into meta-language objects (usually functions) which \emph{denote} those terms -- that is they specify their behavior.
+% TODO cytowanie Stretchey Scott
+In this format one has to define a mapping from program terms into meta-language objects (usually functions) which \emph{denote} those terms -- that is they specify their behavior \cite{scott-denotational-semantics}.
 This mapping is usually required to be compositional -- i.e. the denotation of complex term is a composition of denotations of its sub-terms.
 Denotational semantics are considered to be the most abstract way to specify behavior of programs and can lead to very concise definitions.
 The drawback is that interesting language features such as loops and recursion require more complex mathematical theories to describe the denotations, in particular domain theory and continuous functions.
-In terms of interpreters, the denotational semantics usually correspond to evaluators that heavily reuse features of the meta-language in order to define the same features of object-language e.g. using anonymous functions to model functional values, using conditionals for if expressions, etc.
+In terms of interpreters, the denotational semantics usually correspond to evaluators that heavily reuse features of the meta-language in order to define the same features of object-language, e.g., using anonymous functions to model functional values, using conditionals for if expressions, etc.
 This style of interpreters is sometimes called \textit{meta-circular} due to the recursive nature of the language definition.
 On the one hand these definitional interpreters allow for intuitive understanding of object-language's semantics given familiarity with meta-language.
 On the other hand, the formal connection of such an interpreter with the denotational semantics requires formal definition of meta-language and in particular understanding of the domain in which denotations of meta-language programs live.
@@ -96,16 +170,8 @@ The $\lambda$-abstractions of object-language are represented directly as functi
 The \lstinline!eval! function is compositional -- the denotation of object level application is an application of denotations of function and argument expressions.
 
 \subsection*{Big-step Operational Semantics}
-The format of big-step operational semantics, also known as natural semantics allows for specification of behavior of programs using inference rules.
-These rules usually decompose terms syntactically and give rise to a relation between programs and values to which they evaluate.
-The fact of evaluation of a program to a value is proven by showing a derivation tree built using the inference rules.
-Non-terminating programs therefore have no derivation tree which makes this semantic format ill-suited to describing divergent or infinite computations.
-The interpreters which correspond to big-step operational semantics usually have a form of recursive functions that are not necessarily compositional.
-The natural semantics may be non-deterministic and relate a program with many results.
-When turning nondeterministic semantics into an evaluator (in a deterministic programming language) one has to either change the formal semantics or model the nondeterminism explicitly.
-Let us now turn to a simple interpreter embodying the natural semantics for an imperative language \textit{IMP} shown in Figure \ref{fig:evaluator-imp}.
 
-\begin{figure}[h]
+\begin{figure}[ht!]
 \begin{lstlisting}
 (def-data AExpr
   String
@@ -148,6 +214,15 @@ Let us now turn to a simple interpreter embodying the natural semantics for an i
 \label{fig:evaluator-imp}
 \end{figure}
 
+The format of big-step operational semantics \cite{kahn-natural-semantics}, also known as natural semantics allows for specification of behavior of programs using inference rules.
+These rules usually decompose terms syntactically and give rise to a relation between programs and values to which they evaluate.
+The fact of evaluation of a program to a value is proven by showing a derivation tree built using the inference rules.
+Non-terminating programs therefore have no derivation tree which makes this semantic format ill-suited to describing divergent or infinite computations.
+The interpreters which correspond to big-step operational semantics usually have a form of recursive functions that are not necessarily compositional.
+The natural semantics may be non-deterministic and relate a program with many results.
+When turning nondeterministic semantics into an evaluator (in a deterministic programming language) one has to either change the formal semantics or model the nondeterminism explicitly.
+Let us now turn to a simple interpreter embodying the natural semantics for an imperative language \textit{IMP} shown in Figure \ref{fig:evaluator-imp}.
+
 Datatypes \lstinline!AExpr!, \lstinline!BExpr! and \lstinline!Cmd! describe abstract syntax of arithmetic expressions, boolean expressions and commands.
 The expressions are pure, that is, evaluating them does not affect the state.
 The state is a function mapping variables represented as \lstinline!String!s to numbers, initially set to \lstinline!0! for every variable.
@@ -156,16 +231,22 @@ The function \lstinline!eval! is a direct translation of big-step operational se
 It is not compositional in the \lstinline!While! branch, where \lstinline!eval! is called recursively on the same command it received.
 
 \subsection*{Abstract Machines}
-An abstract machine is usually the most explicit definition of semantics of a language with all the details like argument evaluation order, term decomposition, environments and closures specified.
-The machine consists of a set of configurations (tuples), an injection of program into initial configuration, an extraction function of result from final configuration and a transition relation between configurations.
+% Wzmocnić informację, że maszyna nie jest tylko kolejnym formatem, ale może być nawet wstępem do metody implementacji
+% TODO cytowanie Landin The Mechanical ...
+% 
+An abstract machine \cite{landin-secd} is usually the most explicit definition of semantics of a language with all the details like argument evaluation order, term decomposition, environments and closures specified.
+It is a format of particular interest as it can very precisely specify the operational properties of the language.
+Therefore it provides a reasonable cost model of the evaluation and may even serve as a basis of efficient implementation \cite{leroy-zinc}.
+
+A machine consists of a set of configurations (tuples), an injection of a program into the initial configuration, an extraction function of a result from the final configuration and a transition relation between configurations.
 The behavior of the machine then determines the behavior of the programs in object-language.
 As with big-step operational semantics, an abstract machine may be nondeterministic.
-Usually elements of the machine-state tuple are simple and first-order e.g. terms of the object-language, numbers, lists, etc.
+Usually elements of the machine-state tuple are simple and first-order, e.g., terms of the object-language, numbers, lists, etc.
 One way of encoding a deterministic abstract machine in a programming language is to define a function for each subset of machine states with similar structure.
 The exact configuration is determined by the actual parameters of the function at run-time.
 The bodies of these (mutually recursive) functions encode the transition function.
 
-Figure \ref{fig:krivines-machine} contains an interpreter corresponding to Krivine's machine performing normal order (call-by-name) reduction of \LC{} with de Bruijn indices.
+Figure \ref{fig:krivines-machine} contains an interpreter corresponding to Krivine's machine \cite{krivine-machine} performing normal order (call-by-name) reduction of \LC{} with de Bruijn indices.
 It uses two stacks: \lstinline!Cont!inuation and \lstinline!Env!ironment.
 Both of them contain \lstinline!Thunk!s -- not-yet-evaluated terms paired with their environment.
 The object-language functions are represented as \lstinline!Closure!s -- function bodies paired with their environment.
@@ -179,7 +260,7 @@ In \lstinline!continue! configuration the machine inspects the stack.
 If it is empty then the computed function \lstinline!fn! is the final answer which is returned.
 Otherwise an argument is popped from the stack and the machine switches to \lstinline!eval!uating the \lstinline!body! of the function in the restored environment extended with \lstinline!arg!.
 
-\begin{figure}
+\begin{figure}[ht]
 \begin{lstlisting}
 (def-data Term
   Integer

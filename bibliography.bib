@@ -22,15 +22,46 @@ journal = {Lecture Notes in Computer Science},
 doi = {10.1007/11506676_16}
 }
 
-@inproceedings{refocusing,
-author = {Danvy, Olivier and Nielsen, Lasse},
-year = {2001},
-month = {01},
-pages = {},
-title = {Refocusing in Reduction Semantics},
-volume = {11},
-journal = {BRICS Report Series},
-doi = {10.7146/brics.v11i26.21851}
+@article{refocusing,
+title={Refocusing in reduction semantics},
+author={Danvy, Olivier and Nielsen, Lasse R},
+journal={BRICS Report Series},
+volume={11},
+number={26},
+year={2004}
+}
+
+@inproceedings{refocusing-auto,
+author = {Sieczkowski, Filip and Biernacka, Ma\l{}lgorzata and Biernacki, Dariusz},
+title = {Automating Derivations of Abstract Machines from Reduction Semantics: A Generic Formalization of Refocusing in Coq},
+year = {2010},
+isbn = {9783642242755},
+publisher = {Springer-Verlag},
+address = {Berlin, Heidelberg},
+booktitle = {Proceedings of the 22nd International Conference on Implementation and Application of Functional Languages},
+pages = {72–88},
+numpages = {17},
+location = {Alphen aan den Rijn, The Netherlands},
+series = {IFL’10}
+}
+
+@InProceedings{refocusing-generalized,
+  author =	{Malgorzata Biernacka and Witold Charatonik and Klara Zielinska},
+  title =	{{Generalized Refocusing: From Hybrid Strategies to Abstract Machines}},
+  booktitle =	{2nd International Conference on Formal Structures for Computation and Deduction (FSCD 2017)},
+  pages =	{10:1--10:17},
+  series =	{Leibniz International Proceedings in Informatics (LIPIcs)},
+  ISBN =	{978-3-95977-047-7},
+  ISSN =	{1868-8969},
+  year =	{2017},
+  volume =	{84},
+  editor =	{Dale Miller},
+  publisher =	{Schloss Dagstuhl--Leibniz-Zentrum fuer Informatik},
+  address =	{Dagstuhl, Germany},
+  URL =		{http://drops.dagstuhl.de/opus/volltexte/2017/7718},
+  URN =		{urn:nbn:de:0030-drops-77188},
+  doi =		{10.4230/LIPIcs.FSCD.2017.10},
+  annote =	{Keywords: reduction semantics, abstract machines, formal verification, Coq}
 }
 
 @inproceedings{reynolds,
@@ -170,22 +201,6 @@ editor={Wadler, Philip},
 year={2005},
 month={Nov}
 }
-
-@inproceedings{10.1145/155090.155113,
-author = {Flanagan, Cormac and Sabry, Amr and Duba, Bruce F. and Felleisen, Matthias},
-title = {The Essence of Compiling with Continuations},
-year = {1993},
-isbn = {0897915984},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-url = {https://doi.org/10.1145/155090.155113},
-doi = {10.1145/155090.155113},
-booktitle = {Proceedings of the ACM SIGPLAN 1993 Conference on Programming Language Design and Implementation},
-pages = {237–247},
-numpages = {11},
-location = {Albuquerque, New Mexico, USA},
-series = {PLDI ’93}
-}
   
 @article{flanagan-anf,
 author = {Flanagan, Cormac and Sabry, Amr and Duba, Bruce F. and Felleisen, Matthias},
@@ -204,4 +219,222 @@ month = jun,
 pages = {237–247},
 numpages = {11}
 }
-  
+
+@InProceedings{kahn-natural-semantics,
+author="Kahn, G.",
+editor="Brandenburg, Franz J.
+and Vidal-Naquet, Guy
+and Wirsing, Martin",
+title="Natural semantics",
+booktitle="STACS 87",
+year="1987",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="22--39",
+abstract="During the past few years, many researchers have begun to present semantic specifications in a style that has been strongly advocated by Plotkin in [19]. The purpose of this paper is to introduce in an intuitive manner the essential ideas of the method that we call now Natural Semantics, together with its connections to ideas in logic and computing. Natural Semantics is of interest per se and because it is used as a semantics specification formalism for an interactive computer system that we are currently building at INRIA.",
+isbn="978-3-540-47419-7"
+}
+
+@article{plotkin-sos,
+author = {Plotkin, Gordon},
+year = {2004},
+month = {07},
+pages = {17-139},
+title = {A Structural Approach to Operational Semantics},
+volume = {60-61},
+journal = {J. Log. Algebr. Program.},
+doi = {10.1016/j.jlap.2004.05.001}
+}
+
+@article{scott-denotational-semantics,
+author = {Scott, Dana},
+title = {Data Types as Lattices},
+journal = {SIAM Journal on Computing},
+volume = {5},
+number = {3},
+pages = {522-587},
+year = {1976},
+doi = {10.1137/0205037},
+URL = {https://doi.org/10.1137/0205037},
+eprint = {https://doi.org/10.1137/0205037}
+}
+
+@InProceedings{pretty-big-step-semantics,
+author="Chargu{\'e}raud, Arthur",
+editor="Felleisen, Matthias
+and Gardner, Philippa",
+title="Pretty-Big-Step Semantics",
+booktitle="Programming Languages and Systems",
+year="2013",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="41--60",
+abstract="In spite of the popularity of small-step semantics, big-step semantics remain used by many researchers. However, big-step semantics suffer from a serious duplication problem, which appears as soon as the semantics account for exceptions and/or divergence. In particular, many premises need to be copy-pasted across several evaluation rules. This duplication problem, which is particularly visible when scaling up to full-blown languages, results in formal definitions growing far bigger than necessary. Moreover, it leads to unsatisfactory redundancy in proofs. In this paper, we address the problem by introducing pretty-big-step semantics. Pretty-big-step semantics preserve the spirit of big-step semantics, in the sense that terms are directly related to their results, but they eliminate the duplication associated with big-step semantics.",
+isbn="978-3-642-37036-6"
+}
+
+@book{felleisen-reduction-semantics,
+  title={Semantics engineering with PLT Redex},
+  author={Felleisen, Matthias and Findler, Robert Bruce and Flatt, Matthew},
+  year={2009},
+  publisher={Mit Press}
+}
+
+@InProceedings{poulsen-deriving-pretty-big-step,
+author="Bach Poulsen, Casper
+and Mosses, Peter D.",
+editor="Shao, Zhong",
+title="Deriving Pretty-Big-Step Semantics from Small-Step Semantics",
+booktitle="Programming Languages and Systems",
+year="2014",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="270--289",
+abstract="Big-step semantics for languages with abrupt termination and/or divergence suffer from a serious duplication problem, addressed by the novel `pretty-big-step' style presented by Chargu{\'e}raud at ESOP'13. Such rules are less concise than corresponding small-step rules, but they have the same advantages as big-step rules for program correctness proofs. Here, we show how to automatically derive pretty-big-step rules directly from small-step rules by `refocusing'. This gives the best of both worlds: we only need to write the relatively concise small-step specifications, but our reasoning can be big-step as well as small-step. The use of strictness annotations to derive small-step congruence rules gives further conciseness.",
+isbn="978-3-642-54833-8"
+}
+
+@article{hannan-big-step-to-am,
+  title={From operational semantics to abstract machines},
+  author={Hannan, John and Miller, Dale},
+  journal={Mathematical Structures in Computer Science},
+  volume={2},
+  number={4},
+  pages={415--459},
+  year={1992},
+  publisher={Cambridge University Press}
+}
+
+@article{landin-secd,
+  title={The mechanical evaluation of expressions},
+  author={Landin, Peter J},
+  journal={The computer journal},
+  volume={6},
+  number={4},
+  pages={308--320},
+  year={1964},
+  publisher={The British Computer Society}
+}
+
+@article{krivine-machine,
+author = {Krivine, Jean-Louis},
+title = {A Call-by-Name Lambda-Calculus Machine},
+year = {2007},
+issue_date = {September 2007},
+publisher = {Kluwer Academic Publishers},
+address = {USA},
+volume = {20},
+number = {3},
+issn = {1388-3690},
+url = {https://doi.org/10.1007/s10990-007-9018-9},
+doi = {10.1007/s10990-007-9018-9},
+journal = {Higher Order Symbol. Comput.},
+month = sep,
+pages = {199–207},
+numpages = {9},
+keywords = {Curry-Howard correspondence, Control instruction, Lambda-calculus machine}
+}
+
+@inproceedings{felleisen-cek,
+  title={Control operators, the SECD-machine, and the $\lambda$-calculus},
+  author={Matthias Felleisen and Daniel P. Friedman},
+  booktitle={Formal Description of Programming Concepts},
+  year={1987}
+}
+
+@inproceedings{cregut-normal,
+author = {Cr\'{e}gut, P.},
+title = {An Abstract Machine for Lambda-Terms Normalization},
+year = {1990},
+isbn = {089791368X},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/91556.91681},
+doi = {10.1145/91556.91681},
+booktitle = {Proceedings of the 1990 ACM Conference on LISP and Functional Programming},
+pages = {333–340},
+numpages = {8},
+location = {Nice, France},
+series = {LFP ’90}
+}
+
+@article{ager-interpreter-compiler,
+  title={From interpreter to compiler and virtual machine: a functional derivation},
+  author={Ager, Mads Sig and Biernacki, Dariusz and Danvy, Olivier and Midtgaard, Jan},
+  journal={BRICS Report Series},
+  volume={10},
+  number={14},
+  year={2003}
+}
+
+@article{danvy-object-oriented,
+title = "Inter-deriving semantic artifacts for object-oriented programming",
+journal = "Journal of Computer and System Sciences",
+volume = "76",
+number = "5",
+pages = "302 - 323",
+year = "2010",
+note = "Workshop on Logic, Language, Information and Computation",
+issn = "0022-0000",
+doi = "https://doi.org/10.1016/j.jcss.2009.10.004",
+url = "http://www.sciencedirect.com/science/article/pii/S0022000009000932",
+author = "Olivier Danvy and Jacob Johannsen",
+keywords = "Functional calculus of objects, Reduction semantics, Abstract machine, Natural semantics, Syntactic correspondence, Functional correspondence",
+abstract = "We present a new abstract machine for Abadi and Cardelli's untyped non-imperative calculus of objects. This abstract machine mechanically corresponds to both the reduction semantics (i.e., small-step operational semantics) and the natural semantics (i.e., big-step operational semantics) specified in Abadi and Cardelli's monograph. To move closer to actual implementations, which use environments rather than actual substitutions, we then represent methods as closures and we present three new semantic artifacts for a version of Abadi and Cardelli's calculus with explicit substitutions: a reduction semantics, an environment-based abstract machine, and a natural semantics (i.e., an interpreter) with environments. These three new semantic artifacts mechanically correspond to each other, and the two abstract machines are bisimilar. Their significance lies in the fact that they have not been designed from scratch and then proved correct; instead, they have been inter-derived. To illustrate the inter-derivation and to make this article stand-alone, we also comprehensively treat the example of negational normalization over Boolean formulas, in appendix."
+}
+
+@inproceedings{jedynak-ltac,
+author = {Jedynak, Wojciech and Biernacka, Ma\l{}gorzata and Biernacki, Dariusz},
+title = {An Operational Foundation for the Tactic Language of Coq},
+year = {2013},
+isbn = {9781450321549},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2505879.2505890},
+doi = {10.1145/2505879.2505890},
+booktitle = {Proceedings of the 15th Symposium on Principles and Practice of Declarative Programming},
+pages = {25–36},
+numpages = {12},
+keywords = {proof assistant Coq, reduction semantics, tactics, natural semantics, abstract machine},
+location = {Madrid, Spain},
+series = {PPDP ’13}
+}
+
+@inproceedings{pirog-stg,
+author = {Pirog, Maciej and Biernacki, Dariusz},
+title = {A Systematic Derivation of the STG Machine Verified in Coq},
+year = {2010},
+isbn = {9781450302524},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/1863523.1863528},
+doi = {10.1145/1863523.1863528},
+booktitle = {Proceedings of the Third ACM Haskell Symposium on Haskell},
+pages = {25–36},
+numpages = {12},
+keywords = {verification, derivation, abstract machine, natural semantics, stg, coq},
+location = {Baltimore, Maryland, USA},
+series = {Haskell ’10}
+}
+
+@InProceedings{design-and-correctness-cfa,
+author="Banerjee, Anindya
+and Heintze, Nevin
+and Riecke, Jon G.",
+editor="Kobayashi, Naoki
+and Pierce, Benjamin C.",
+title="Design and Correctness of Program Transformations Based on Control-Flow Analysis",
+booktitle="Theoretical Aspects of Computer Software",
+year="2001",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="420--447",
+abstract="We show how control-flow-based program transformations in functional languages can be proven correct. The method relies upon ``defunctionalization,'' a mapping from a higher-order language to a first-order language.W e first show that defunctionalization is correct; using this proof and common semantic techniques, we then show how two program transformations --- flow-based inlining and lightweight defunctionalization --- can be proven correct.",
+isbn="978-3-540-45500-4"
+}
+
+@article{leroy-zinc,
+  title={The ZINC experiment: an economical implementation of the ML language},
+  author={Leroy, Xavier},
+  year={1990}
+}
