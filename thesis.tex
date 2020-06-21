@@ -1,21 +1,45 @@
 \documentclass[english, mgr, shortabstract]{iithesis}
 
-\usepackage[backend=biber,sorting=nty,language=english]{biblatex}
+\usepackage[backend=biber,sorting=none,language=english]{biblatex}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{stmaryrd}
 \usepackage{listings}
-% \usepackage{fira}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{xcolor}
+
+\usepackage[scale=0.8]{FiraMono}
+
+\lstdefinelanguage{idl}{%
+  alsoletter={-,?,\#,:},
+  otherkeywords={(,),\{,\},[,]},
+  morekeywords={def,fun,def-data,def-struct,match,let,error},
+  morekeywords=[2]{String,Integer,Any,Boolean},
+  morekeywords=[3]{(,),\{,\},[,]},
+  morekeywords=[4]{\#:apply, \#:atomic, \#:no-defun}
+  sensitive=false,
+  morestring=[b]",
+  morecomment=[l]{;;}
+}
 
 \lstset{%
-  basicstyle=\ttfamily,
+  basicstyle=\ttfamily\color{black},
   mathescape=true,
-  escapechar=@
-}
+  showstringspaces=false,
+  keywordstyle={\color{green!50!black}},
+  keywordstyle=[2]{\color{blue!50!black}}, 
+  keywordstyle=[3]{\color{gray}},
+  keywordstyle=[4]{\color{blue!80!black}},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{green!80!black},
+  identifierstyle=\color{black},
+  escapechar=@,
+  language=idl
+} 
 
 % Allows to use lstinline in the math mode
 % See https://tex.stackexchange.com/questions/127010/how-can-i-make-lstinline-function-normally-inside-math-mode
-\usepackage{etoolbox}
 \expandafter\patchcmd\csname \string\lstinline\endcsname{%
   \leavevmode
   \bgroup
@@ -52,11 +76,6 @@
 \newcommand{\semt}{\lstinline!semt!}
 
 \mathchardef\mh="2D
-
-% define "struts", as suggested by Claudio Beccari in
-%    a piece in TeX and TUG News, Vol. 2, 1993.
-\newcommand\Tstrut{\rule{0pt}{2.6ex}}         % = `top' strut
-\newcommand\Bstrut{\rule[-0.9ex]{0pt}{0pt}}   % = `bottom' strut
 
 \addbibresource{bibliography.bib}
 \DeclareFieldFormat[

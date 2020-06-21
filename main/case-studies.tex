@@ -1,2 +1,37 @@
 \chapter{Case Studies}\label{chapter:case-studies}
-I studied the performance of the algorithm and the implementation on a number of programming language calculi. 
+I studied the performance of the algorithm and the implementation on a number of programming language calculi.
+Figure \ref{fig:tested-interpreters} shows a summary of interpreters on which I tested the transformer.
+The first group of interpreters is denotational (mostly meta-circular) in style and covers various extensions of the base \LC{} with call-by-value evaluation order.
+The additions I tested include: integers with addition, recursive let-bindings, delimited control operators -- \textit{shift} and \textit{reset} with CPS interpreter based on \cite{biernacka-delimited-continuations} and exceptions in two styles: monadic with exceptions as values (functions return either value or an exception) and in CPS with success and error continuations.
+The last interpreter for call-by-value in Figure \ref{fig:tested-interpreters} is a normalization function based on normalization by evaluation technique transcribed from \cite{abel-nbe}.
+The next three interpreters correspond to big-step operational semantics for call-by-name \LC{}, call-by-need (call-by-name with memoization) and a simple imperative language respectively.
+
+\begin{figure}
+\begin{center}
+\begin{tabular}{c|c|c|c}
+Language & Interpreter style & Lang. Features & Result \\
+\Xhline{2\arrayrulewidth}
+\multirow{13}{*}{\makecell{call-by-value \\ \LC{}}} & denotational & $\cdot$ & CEK machine \\
+\cline{2-4}
+& denotational & integers with add & CEK with add \\
+\cline{2-4}
+& \makecell{denotational, \\ recursion via \\ environment} & \makecell{integers, recursive \\ let-bindings} & \makecell{similar to Reynold's  \\ first-order interpreter}\\
+\cline{2-4}
+& \makecell{denotational \\ with conts.} & shift and reset & two layers of conts.\\
+\cline{2-4}
+& \makecell{denotational, \\ monadic} & \multirow{3}{*}{\makecell{exceptions \\ with handlers}} & \makecell{explicit \\ stack unwinding}\\
+\cline{2-2}\cline{4-4}
+& \makecell{denotational, \\ CPS} & & \makecell{pointer to\\ exception handler}\\
+\cline{2-4}
+& \makecell{normalization \\ by evaluation} & $\cdot$ & strong CEK machine \\
+\hline
+\makecell{call-by-name \\ \LC{}} & big-step & $\cdot$ & Krivine machine \\
+\hline
+\makecell{call-by-need \\ \LC{}} & \makecell{big-step \\ (state passing)} & memoization & lazy Krivine machine \\
+\hline
+\makecell{simple \\ imperative} & \makecell{big-step \\ (state passing)} & \makecell{conditionals, \\ while, assignment} & $\cdot$\\
+\hline
+\end{tabular}
+\end{center}
+\caption{Summary of tested interpreters}\label{fig:tested-interpreters}
+\end{figure}

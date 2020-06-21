@@ -187,8 +187,8 @@ The \lstinline!eval! function is compositional -- the denotation of object level
 (def init-state (var) 0)
 (def update-state (tgt val state) ...)
 
-(def aval (state aexpr) ...) ; valuate arithmetic expression
-(def bval (state bexpr) ...) ; valuate boolean expression
+(def aval (state aexpr) ...) ;; valuate arithmetic expression
+(def bval (state bexpr) ...) ;; valuate boolean expression
 
 (def eval (state cmd)
   (match cmd

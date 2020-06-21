@@ -41,7 +41,7 @@ The variable \texttt{x} is translated to application of continuation $k$ to \tex
 To translate an anonymous function definition, first a fresh variable \texttt{k'} is generated then the body of the function is translated with \texttt{k'} as the continuation and finally, the continuation $k$ is applied to the transformed function expression.
 Function application is transformed by placing all sub-expressions in successively nested functions, with the deepest one actually performing the call with an additional argument -- the continuation $k$.
 This way the evaluation of arguments is sequenced left-to-right and happens before the application.
-Translation of the \texttt{match} expression requires translating the scrutinee and putting the branches in the continuation. The branches are all transformed using the same continuation $k$.
+Translation of the \lstinline{match} expression requires translating the scrutinee and putting the branches in the continuation. The branches are all transformed using the same continuation $k$.
 Finally, during translation of the \texttt{error} expression the continuation is discarded since the error halts the execution.
 The omitted rules for \texttt{if} expressions and record creation are similar to \texttt{match} expressions and applications respectively.
 
@@ -66,21 +66,21 @@ In Section \ref{sec:selective-cps} we will see a more complex transformation whi
 \begin{figure}
     \centering
    \begin{align*}
-        \llbracket \texttt{x} \rrbracket k =& \texttt{(}k\,\texttt{x)}\\
+        \llbracket \lstinline{x} \rrbracket k =& \lstinline{(}k\,\lstinline{x)}\\
 %
-        \llbracket \texttt{(fun (x y ...) e)} \rrbracket k
-        =& \texttt{(} k \, \texttt{(fun (x y ... k')}\, \llbracket \texttt{e} \rrbracket \texttt{k'))} \\
+        \llbracket \lstinline!(fun ($x \ldots$)$\;e$)! \rrbracket k
+        =& \lstinline{(} k \; \lstinline!(fun ($x \ldots$ k')!\, \llbracket \lstinline{e} \rrbracket \lstinline{k'))} \\
 %        
-        \llbracket \texttt{(}e_1\ldots e_n\texttt{)} \rrbracket k
-        =& \llbracket e_1 \rrbracket \, \texttt{(fun (v1)} \ldots \llbracket e_n \rrbracket k' \ldots \texttt{)}\, \\
-         & \text{where}\,k' = \texttt{(fun (vn) (v1...vn}\,k\texttt{))} \\
+        \llbracket \lstinline{(}e_1\ldots e_n\lstinline{)} \rrbracket k
+        =& \llbracket e_1 \rrbracket \, \lstinline!(fun (v$_1$)! \bb{e_2}\lstinline!(fun$\;$($v_2$)! \ldots \llbracket e_n \rrbracket k' \lstinline!)$\ldots$)!\, \\
+         & \text{where}\,k' = \lstinline!(fun (v$_n$)$\;$(v$_1 \ldots\;$v$_n$!\,k\lstinline!))! \\
 %        
-        \llbracket \texttt{(match } e \texttt{(} p_1\,e_1\texttt{)}\ldots \texttt{(} p_n\,e_n\texttt{)} \rrbracket k
-        =& \llbracket e \rrbracket \texttt{(fun (v) (case v }ps \,\texttt{)}\\
-         & \text{where}\,ps = \texttt{(} p_1\,\llbracket e_1 \rrbracket k  \texttt{)}\ldots \texttt{(} p_n\,\llbracket e_n \rrbracket k \texttt{)}\\
+        \llbracket \lstinline!(match $\;e\;$ ($p\;e'$)$\ldots$)! \rrbracket k
+        =& \llbracket e \rrbracket \lstinline!(fun (v)$\;$(match v\ !ps \lstinline!)!\\
+        & \text{where}\,ps = \lstinline!(!p\;\llbracket e' \rrbracket k \lstinline!)! \ldots \\
 %
-        \llbracket \texttt{(error}\,s\,\texttt{)} \rrbracket k
-        =& \texttt{(error}\,s\,\texttt{)} \\
+%         \llbracket \lstinline{(error}\,s\,\lstinline{)} \rrbracket k
+%         =& \lstinline{(error}\,s\,\lstinline{)}
    \end{align*}
     \caption{A call-by-value CPS translation}
     \label{fig:cps-translation}
@@ -111,14 +111,14 @@ In Section \ref{sec:selective-cps} we will see a more complex transformation whi
 \end{figure}
 
 \section{Defunctionalization}
-The second step is the elimination of higher order functions from our interpreter, transforming it into a collection of mutually (tail-)recursive functions -- a state machine with the \texttt{main} function building initial configuration.
+The second step is the elimination of higher order functions from our interpreter, transforming it into a collection of mutually (tail-)recursive functions -- a state machine with the \lstinline{main} function building initial configuration.
 There are many approaches to compiling first class functions away but of particular interest to us will be defunctionalization.
 It is a global program transformation that replaces each anonymous function definition with a uniquely labeled record which holds the values for function's free variables.
 Every application of unknown function is replaced with a specific top-level \textit{apply} function which dispatches on the label of the passed record and evaluates the corresponding function's body.
 
 This simple description glosses over many important details.
 Firstly, we must distinguish between known and unknown function calls as only unknown calls should be transformed.
-Secondly, we must be able to create records for top-level definitions when they are passed as a first class function, e.g., in the definition of \texttt{eval} in the branch for variables we apply an unknown function \texttt{env} which may evaluate either to an anonymous function created by \texttt{extend} or a top-level function \texttt{init}.
+Secondly, we must be able to create records for top-level definitions when they are passed as a first class function, e.g., in the definition of \lstinline{eval} in the branch for variables we apply an unknown function \lstinline{env} which may evaluate either to an anonymous function created by \lstinline{extend} or a top-level function \lstinline{init}.
 Lastly, we must somehow know for each application point which functions may be applied.
 The first two challenges can be solved with a static, syntactic analysis of the interpreter.
 The other challenge can be solved using control-flow analysis as described in Section \ref{sec:selective-defun}.
