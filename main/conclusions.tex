@@ -1,1 +1,16 @@
 \chapter{Conclusions}\label{chapter:conclusions}
+In the thesis I described an algorithm allowing for automatic derivation of an abstract machine given an interpreter which usually corresponds to denotational or natural semantics.
+The algorithm allows for specification of functions which should be considered atomic from the point of view of control-flow and function spaces which treated as abstract (i.e. left in the higher-order form) in the resulting machine.
+In order to enable the transformation I derived the control-flow analysis for \IDL{} using the abstracting abstract machines methodology.
+I implemented the algorithm in the \textit{Haskell} programming language and used this tool to transform a selection of interpreters.
+
+The correctness of the tool has been established experimentally by running the interpreters after every intermediate step of transformation.
+The next logical step is a formalization of the algorithm using a proof assistant (e.g., Coq) to obtain a powerful and correct method of deriving abstract machines.
+
+In order to extend capabilities of \semt{} as a practical tool for semantics engineering the future work could include extending the set of primitive operations and adding the ability to import arbitrary \textit{Racket} functions and provide their abstract specification.
+Another important matter is the performance (i.e., speed) of the tool.
+To this end a thorough investigation of cost and complexity of computing the control-flow analysis is required.
+
+Other avenue for improvement lies in extensions of the meta-language capabilities.
+Investigation of additions such as control operators, nondeterministic choice and concurrency could yield many opportunities for diversifying the set of interpreters (and languages) that may be encoded in the \IDL{}.
+In particular control operators could allow for expressing the interpreter for a language with delimited control (or algebraic effects) in direct style.
