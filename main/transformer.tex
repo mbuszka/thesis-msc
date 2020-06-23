@@ -59,7 +59,7 @@ Commands $c$ extend variables with values -- base literals, record constructors 
 Expressions $e$ in ANF have the shape of a possibly empty sequence of let-bindings ending with either an error term or a command.
 
 The $\anf{\cdot}{\cdot}$ function, written in CPS, is the main transformation function.
-Its arguments are term to be transformed and a meta-continuation (i.e. a continuation in meta-language) which will be called to obtain the term for the rest of transformed input.
+Its arguments are term to be transformed and a meta-continuation (i.e., a continuation in meta-language) which will be called to obtain the term for the rest of transformed input.
 This function decomposes the term according to the evaluation rules and uses two helper functions.
 Function $\atomic{\cdot}$ transforms a continuation expecting an atomic expression (which are created when transforming commands) into one accepting any command by let-binding passed argument $c$ when necessary.
 Function $\anfSeq{\cdot}{\cdot}$ sequences computation of multiple expressions by creating a chain of let-bindings (using $\atomic{\cdot}$) and then calling the continuation with created variables.

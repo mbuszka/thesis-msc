@@ -40,7 +40,7 @@ The most recent result is a 2019 paper by Vesely and Fisher \cite{one-step-at-a-
 Another line of work is that of constructing abstract machines.
 Starting with Landin's SECD machine \cite{landin-secd} for \LC{}, many abstract machines have been proposed for various evaluation strategies and with differing assumptions on capabilities of the runtime (e.g., substitution vs environments).
 Notable work includes: Krivine's machine \cite{krivine-machine} for call-by-name reduction, Felleisen and Friedman's CEK machine \cite{felleisen-cek} and Cr\'{e}gut's machine \cite{cregut-normal} for normalization of $\lambda$-terms in normal order.
-Besides equipping existing calculi with an abstract machine, novel developments also come with both higher-level operational semantics and a machine, e.g. in the novel field of algebraic effects \cite{biernacki-algebraic-effects,hillerstrom-algebraic-effects}.
+Besides equipping existing calculi with an abstract machine, novel developments also come with both higher-level operational semantics and a machine, e.g., in the novel field of algebraic effects \cite{biernacki-algebraic-effects,hillerstrom-algebraic-effects}.
 Manual construction of an abstract machine for a given evaluation discipline can be challenging and also requires a proof of compatibility w.r.t the source semantics, therefore methods for deriving the machines have been developed.
 Danvy and Nielsen's refocusing framework \cite{refocusing} gave raise to an automatic procedure for transforming reduction semantics into an abstract machine \cite{refocusing-auto,refocusing-generalized}.
 Ager shows a mechanical method of deriving abstract machines from L-attributed natural semantics \cite{ager-natural-semantics} while Hannan and Miller present derivations of abstract machines for call-by-value and call-by-name reduction strategies \cite{hannan-big-step-to-am} via program transformations.
@@ -159,7 +159,7 @@ Nevertheless I will explain how these mathematical formalisms correspond to eval
 \subsection*{Denotational Semantics}
 % TODO cytowanie Stretchey Scott
 In this format one has to define a mapping from program terms into meta-language objects (usually functions) which \emph{denote} those terms -- that is they specify their behavior \cite{scott-denotational-semantics}.
-This mapping is usually required to be compositional -- i.e. the denotation of complex term is a composition of denotations of its sub-terms.
+This mapping is usually required to be compositional -- i.e., the denotation of complex term is a composition of denotations of its sub-terms.
 Denotational semantics are considered to be the most abstract way to specify behavior of programs and can lead to very concise definitions.
 The drawback is that interesting language features such as loops and recursion require more complex mathematical theories to describe the denotations, in particular domain theory and continuous functions.
 In terms of interpreters, the denotational semantics usually correspond to evaluators that heavily reuse features of the meta-language in order to define the same features of object-language, e.g., using anonymous functions to model functional values, using conditionals for if expressions, etc.
@@ -252,7 +252,7 @@ It uses two stacks: \lstinline!Cont!inuation and \lstinline!Env!ironment.
 Both of them contain \lstinline!Thunk!s -- not-yet-evaluated terms paired with their environment.
 The object-language functions are represented as \lstinline!Closure!s -- function bodies paired with their environment.
 The machine has two classes of states: \lstinline!eval! and \lstinline!continue!.
-The initial configuration is \lstinline!(eval term {Nil} {Halt})! -- i.e. eval with the term of interest and empty stacks.
+The initial configuration is \lstinline!(eval term {Nil} {Halt})! -- i.e., eval with the term of interest and empty stacks.
 There are four transitions from \lstinline!eval! configuration.
 The first two search for the \lstinline!Thunk! corresponding to the variable (de Bruijn index) in the environment and then evaluate it with old stack but with restored environment.
 The third transition switches to \lstinline!continue! configuration with the closure is created by pairing current environment with abstraction's body.
