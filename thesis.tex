@@ -12,12 +12,12 @@
 \usepackage[scale=0.8]{FiraMono}
 
 \lstdefinelanguage{idl}{%
-  alsoletter={-,?,\#,:},
+  alsoletter={-?\#:},
   otherkeywords={(,),\{,\},[,]},
   morekeywords={def,fun,def-data,def-struct,match,let,error},
   morekeywords=[2]{String,Integer,Any,Boolean},
   morekeywords=[3]{(,),\{,\},[,]},
-  morekeywords=[4]{\#:apply, \#:atomic, \#:no-defun}
+  morekeywords=[4]{\#:bar,\#:apply,\#:atomic,\#:no-defun,\#:name,\#t, \#f, \#:foo},
   sensitive=false,
   morestring=[b]",
   morecomment=[l]{;;}
@@ -101,7 +101,6 @@
 
   \appendix
   \input{main/manual.tex}
-  \input{main/dev-manual.tex}
 
   \printbibliography[heading=bibintoc]
 \end{document}
