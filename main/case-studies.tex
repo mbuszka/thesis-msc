@@ -6,32 +6,133 @@ The additions I tested include: integers with addition, recursive let-bindings, 
 The last interpreter for call-by-value in Figure \ref{fig:tested-interpreters} is a normalization function based on normalization by evaluation technique transcribed from \cite{abel-nbe}.
 The next three interpreters correspond to big-step operational semantics for call-by-name \LC{}, call-by-need (call-by-name with memoization) and a simple imperative language respectively.
 
+Transformation of call-by-value and call-by-need \LC{} yielded machines very similar to the CEK and Krivine machines respectively.
+I was also able to replicate the machines previously obtained via manual application of the functional correspondence (\cite{functional-correspondence,biernacka-delimited-continuations,biernacki-logic-engine})
+The biggest differences were due to introduction of administrative transitions in handling of applications.
+This property hints at a potential for improvement by introducing an inlining step to the transformation.
+An interesting feature of the transformation is the ability to select which parts of the interpreter should be transformed and which should be considered atomic.
+These choices are reflected in the resulting machine, e.g., by transforming an environment look up in call-by-need interpreter we obtain a Krivine machine which has the search for a value in the environment embedded in its transition rules, while marking it atomic gives us a more abstract formulation from \cite{functional-correspondence}.
+Another consequence of this feature is that one can work with interpreters already in CPS and essentially skip directly to defunctionalization (as tested on micro-Prolog interpreter of \cite{biernacki-logic-engine}).
+
+In the remainder of this chapter I will present three case studies.
+The first describes an interpreter encoding the natural semantics of a simple imperative language and serves as a demonstration of general properties of the transformation and machines it produces.
+The second example is of an interpreter for \LC{} extended with exceptions and exception handlers which shows how additions to the source semantics translate to changes in the resulting machine.
+The last example shows that the transformation can be applied to semantic specifications stronger than evaluators.
+To this end I show a derivation of a machine performing applicative order normalization of $\lambda$-terms from a high-level normalization function.
+To my knowledge this is a first abstract machine implementing strong call-by-value strategy.
+
 \begin{figure}
-\begin{center}
-\begin{tabular}{c|c|c|c}
-Language & Interpreter style & Lang. Features & Result \\
-\Xhline{2\arrayrulewidth}
-\multirow{13}{*}{\makecell{call-by-value \\ \LC{}}} & denotational & $\cdot$ & CEK machine \\
-\cline{2-4}
-& denotational & integers with add & CEK with add \\
-\cline{2-4}
-& \makecell{denotational, \\ recursion via \\ environment} & \makecell{integers, recursive \\ let-bindings} & \makecell{similar to Reynold's  \\ first-order interpreter}\\
-\cline{2-4}
-& \makecell{denotational \\ with conts.} & shift and reset & two layers of conts.\\
-\cline{2-4}
-& \makecell{denotational, \\ monadic} & \multirow{3}{*}{\makecell{exceptions \\ with handlers}} & \makecell{explicit \\ stack unwinding}\\
-\cline{2-2}\cline{4-4}
-& \makecell{denotational, \\ CPS} & & \makecell{pointer to\\ exception handler}\\
-\cline{2-4}
-& \makecell{normalization \\ by evaluation} & $\cdot$ & strong CEK machine \\
-\hline
-\makecell{call-by-name \\ \LC{}} & big-step & $\cdot$ & Krivine machine \\
-\hline
-\makecell{call-by-need \\ \LC{}} & \makecell{big-step \\ (state passing)} & memoization & lazy Krivine machine \\
-\hline
-\makecell{simple \\ imperative} & \makecell{big-step \\ (state passing)} & \makecell{conditionals, \\ while, assignment} & $\cdot$\\
-\hline
-\end{tabular}
-\end{center}
-\caption{Summary of tested interpreters}\label{fig:tested-interpreters}
+  \begin{center}
+  \begin{tabular}{c|c|c|c}
+  Language & Interpreter style & Lang. Features & Result \\
+  \Xhline{2\arrayrulewidth}
+  \multirow{13}{*}{\makecell{call-by-value \\ \LC{}}} & denotational & $\cdot$ & CEK machine \\
+  \cline{2-4}
+  & denotational & integers with add & CEK with add \\
+  \cline{2-4}
+  & \makecell{denotational, \\ recursion via \\ environment} & \makecell{integers, recursive \\ let-bindings} & \makecell{similar to Reynold's  \\ first-order interpreter}\\
+  \cline{2-4}
+  & \makecell{denotational \\ with conts.} & shift and reset & two layers of conts.\\
+  \cline{2-4}
+  & \makecell{denotational, \\ monadic} & \multirow{3}{*}{\makecell{exceptions \\ with handlers}} & \makecell{explicit \\ stack unwinding}\\
+  \cline{2-2}\cline{4-4}
+  & \makecell{denotational, \\ CPS} & & \makecell{pointer to\\ exception handler}\\
+  \cline{2-4}
+  & \makecell{normalization \\ by evaluation} & $\cdot$ & strong CEK machine \\
+  \hline
+  \makecell{call-by-name \\ \LC{}} & big-step & $\cdot$ & Krivine machine \\
+  \hline
+  \makecell{call-by-need \\ \LC{}} & \makecell{big-step \\ (state passing)} & memoization & lazy Krivine machine \\
+  \hline
+  \makecell{simple \\ imperative} & \makecell{big-step \\ (state passing)} & \makecell{conditionals, \\ while, assignment} & $\cdot$\\
+  \hline
+  micro-Prolog & CPS & \makecell{backtracking, \\ cut operator} & logic engine\\
+  \hline
+  \end{tabular}
+  \end{center}
+  \caption{Summary of tested interpreters}\label{fig:tested-interpreters}
+  \end{figure}
+
+\section{Natural semantics for an imperative language}
+\begin{figure}
+  \lstinputlisting[numbers=left,firstline=22,lastline=62]{interpreters/src/imperative-natural.rkt}
+  \caption{An encoding of natural semantics for an imperative language}
+  \label{fig:studies-imp}
 \end{figure}
+
+Let us begin with an encoding of natural semantics for a simple imperative language shown in Figure \ref{fig:studies-imp}.
+The first two functions provide an implementation of memory (a mapping from locations to values -- integers) as a function.
+Since we are not interested in implementation strategy of the memory, the function \lstinline!init-state! and the anonymous function beginning in 4th line are both annotated with \lstinline!#:atomic! and \lstinline!#:no-defun!.
+Together with \lstinline!#:atomic! annotation on \lstinline!update-state! it ensures that after the transformation, operations on memory (both updates and look ups) will be treated as builtin operations of the machine.
+Following the natural semantics, functions \lstinline!aval! and \lstinline!bval! define valuations of arithmetic and boolean expressions.
+They are also marked as \lstinline!#:atomic! since they are pure and side-effect free.
+The \lstinline!eval! function is a straightforward translation of the deduction rules of the natural semantics.
+It retains the state passing style and usage of semantic functions for valuation of expressions.
+The rules are encoded as branches of pattern matching on syntax of a command.
+The branch for assignment updates the state with valuation of an arithmetic expression.
+The rules for \lstinline!If! command are both encoded as a pattern match on truthiness of valuation of the condition.
+The branch for \lstinline!Seq! command sequences the computation by passing state updated by evaluating \lstinline!cmd1! to evaluation of \lstinline!cmd2!.
+The branch for \lstinline!While! loop encodes the two rules of the big-step semantics by checking whether the condition holds and either executing the body of the loop and recursively evaluating the whole loop in a new state or returning the state.
+
+\begin{figure}
+\lstinputlisting[numbers=left,firstline=42,lastline=63]{interpreters/out/imperative-natural.rkt}
+\caption{An abstract machine for the simple imperative language}
+\label{fig:studies-imp-machine}
+\end{figure}
+
+The machine we obtained is presented in Figure \ref{fig:studies-imp-machine}.
+The figure consists of three functions: \lstinline!eval! and \lstinline!main! which were changed during the transformation and a generated \lstinline!continue! function.
+The rest of the interpreter remains unchanged (modulo omitted record definitions).
+We can see that the machine uses a stack of continuations to handle sequencing of commands (\lstinline!Seq1!) and iteration (\lstinline!While1!) in while loops.
+Even though loops introduce a stack frame, only one frame is present on the stack for a given \lstinline!While! command regardless of number of iterations.
+This frame is responsible for continuing the iteration after the body of the loop has been executed.
+The final continuation \lstinline!Halt! is provided by the \lstinline!main! function which builds the initial configuration and starts the machine.
+The clause for \lstinline!Halt! extracts the result from final configuration.
+
+The names for continuations, the \lstinline!continue! function as well as its parameters have been generated without any assistance from the user and contribute to the readability of the machine.
+The machine is formulated in a natural way, considering it works directly on abstract syntax of the language rather than a series of instructions.
+This manifests in usage of runtime continuation stack instead of goto instructions directly in the instruction sequence.
+
+\section{Call-by-value \LC{} with exceptions}
+\begin{figure}
+  \lstinputlisting[numbers=left,firstline=23,lastline=59]{interpreters/src/lambda-exceptions.rkt}
+  \caption{An interpreter for \LC{} with exceptions and arithmetic}
+  \label{fig:studies-exceptions}
+\end{figure}
+
+The second example is an interpreter for the \LC{} extended with exceptions which may be thrown and (optionally) caught as well as simple arithmetic.
+The interpreter shown in Figure \ref{fig:studies-exceptions} can be considered an extension of the meta-circular interpreter from Chapter \ref{chapter:introduction}.
+The functions are now embedded in the standard "either" monad: they return either \lstinline!{Ok value}! or an \lstinline!{Err value}!.
+The sequencing of computation requires pattern matching on the result and either propagating an error or continuing with the value.
+It is apparent in branches for \lstinline!App! and \lstinline!Add!.
+The values of this interpreter -- integers and functions are returned in the \lstinline!Ok! variant to indicate success; same holds for values looked up in the environment.
+The \lstinline!Raise! expression introduces errors by returning the number \lstinline!n! in the \lstinline!Err! variant.
+This limitation to constants is imposed in order to keep the listing one page long.
+In the branch for \lstinline!Try!, first an expression \lstinline!t! is executed and in case of exception the handler \lstinline!handle! will be evaluated in an environment extended with the value passed by the exception.
+We are not interested in control-flow behavior of environment extension or look up so they are all marked \lstinline!#:atomic!.
+We allow them to be defunctionalized and specify that the resulting record for anonymous function in line 29 should be called \lstinline!Extend! and the apply function should be named \lstinline!lookup!.
+
+\begin{figure}
+  \lstset{basicstyle=\ttfamily\color{black}\footnotesize}
+  \lstinputlisting[numbers=left,firstline=32,lastline=81]{interpreters/out/lambda-exceptions.rkt}
+  \caption{A machine for \LC{} with exceptions and arithmetic}
+  \lstset{basicstyle=\ttfamily\color{black}}
+  \label{fig:studies-exceptions-machine}
+\end{figure}
+
+The transformed interpreter is presented in Figure \ref{fig:studies-exceptions-machine}.
+We can see that defunctionalized environment forms a list of variable-value pairs.
+Instead of environment application the \lstinline!lookup! function is called which recursively searches for the binding.
+The function is kept in direct style as intended.
+
+Let us now turn to the transition functions: \lstinline!eval! and \lstinline!continue!.
+The sequencing of operations has been split between the two functions.
+To evaluate an application in object-language first the \lstinline!fn! expression is evaluated (line 6) with \lstinline!App1! continuation pushed onto the stack.
+When the control reaches this frame (lines 24-27), \lstinline!var3! contains either an exception or the computed value for the function.
+In the \lstinline!Ok! case, the argument \lstinline!arg! and the environment \lstinline!env! are restored and evaluated with \lstinline!Ok1! frame pushed onto the stack.
+Finally, when control reaches \lstinline!Ok1! and \lstinline!var3! holds a value, the function value is popped from the stack and applied to the argument (line 23).
+Looking at the \lstinline!continue! function we can see that if it is passed an exception (\lstinline!Err! variant) then it will unroll the continuation stack until it finds either a \lstinline!Try1! frame or the bottom of the stack -- \lstinline!Halt!.
+In case of the latter the machine finishes execution with \lstinline!Err! value.
+In case of the former a handling expression is evaluated in the saved environment extended with the exception code. 
+
+\section{NbE} % to the best of my knowledge new

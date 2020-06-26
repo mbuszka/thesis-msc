@@ -90,7 +90,9 @@ In order to obtain correct, useful and computable analysis I employ the abstract
 This derivation proved very capable in handling the non-trivial language containing records, anonymous functions and pattern matching.
 The resulting analysis enables automatic transformation of user specified parts of the interpreter as opposed to whole-program-only transformations.
 I implemented the algorithm in the \emph{Haskell} programming language giving raise to a tool --- \texttt{semt} --- performing the transformation.
-I evaluated the performance of the tool on multiple interpreters for a diverse set of programming language calculi.
+I evaluated the performance of the tool on multiple interpreters for a diverse set of programming language calculi and in the process I derived a first to my knowledge machine implementing strong call-by-value strategy.
+
+% Akapit o related work z cps i defunkcjonalizacji, wytłumaczyć jak się różnią od tego co zrobiłem, dlaczego robię to trochę inaczej, skontrastować z literaturą i podkreślić, że wiem co tam się dzieje oraz to co wybrałem fajnie działa.
 
 The rest of this thesis is structured as follows:
 In the remainder of this chapter I introduce the \textit{Interpreter Definition Language} which is the meta-language accepted by the transformer and will be used in example evaluators throughout the thesis; I also compare the semantics formats with styles of interpreters to which they correspond.
