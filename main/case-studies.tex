@@ -19,7 +19,6 @@ The first describes an interpreter encoding the natural semantics of a simple im
 The second example is of an interpreter for \LC{} extended with exceptions and exception handlers which shows how additions to the source semantics translate to changes in the resulting machine.
 The last example shows that the transformation can be applied to semantic specifications stronger than evaluators.
 To this end I show a derivation of a machine performing applicative order normalization of $\lambda$-terms from a high-level normalization function.
-To my knowledge this is a first abstract machine implementing strong call-by-value strategy.
 
 \begin{figure}
   \begin{center}
@@ -100,12 +99,12 @@ This manifests in usage of runtime continuation stack instead of goto instructio
   \label{fig:studies-exceptions}
 \end{figure}
 
-The second example is an interpreter for the \LC{} extended with exceptions which may be thrown and (optionally) caught as well as simple arithmetic.
+The second example is an interpreter for the \LC{} extended with exceptions which may be thrown and (optionally) caught and with simple arithmetic.
 The interpreter shown in Figure \ref{fig:studies-exceptions} can be considered an extension of the meta-circular interpreter from Chapter \ref{chapter:introduction}.
 The functions are now embedded in the standard "either" monad: they return either \lstinline!{Ok value}! or an \lstinline!{Err value}!.
 The sequencing of computation requires pattern matching on the result and either propagating an error or continuing with the value.
 It is apparent in branches for \lstinline!App! and \lstinline!Add!.
-The values of this interpreter -- integers and functions are returned in the \lstinline!Ok! variant to indicate success; same holds for values looked up in the environment.
+The values of this interpreter -- integers and functions, are returned in the \lstinline!Ok! variant to indicate success; same holds for values looked up in the environment.
 The \lstinline!Raise! expression introduces errors by returning the number \lstinline!n! in the \lstinline!Err! variant.
 This limitation to constants is imposed in order to keep the listing one page long.
 In the branch for \lstinline!Try!, first an expression \lstinline!t! is executed and in case of exception the handler \lstinline!handle! will be evaluated in an environment extended with the value passed by the exception.
@@ -135,4 +134,47 @@ Looking at the \lstinline!continue! function we can see that if it is passed an 
 In case of the latter the machine finishes execution with \lstinline!Err! value.
 In case of the former a handling expression is evaluated in the saved environment extended with the exception code. 
 
-\section{NbE} % to the best of my knowledge new
+\section{Normalization by Evaluation for call-by-value \LC{}}
+
+\begin{figure}
+  % \lstset{basicstyle=\ttfamily\color{black}\footnotesize}
+  \lstinputlisting[numbers=left,firstline=7,lastline=43]{interpreters/src/normalization-by-evaluation.rkt}
+  \caption{A normalization function for call-by-value \LC{}}
+  % \lstset{basicstyle=\ttfamily\color{black}}
+  \label{fig:studies-nbe}
+\end{figure}
+
+The last case study is of a normalization function rather than a typical interpreter.
+Figure \ref{fig:studies-nbe} contains the development.
+The technique used is called normalization by evaluation and the particular definition has been adapted from \cite{abel-nbe}.
+The main approach is to use standard evaluator for call-by-value \LC{} to evaluate terms to values and then reify them back into terms.
+The terms use de Bruijn indices to represent bound variables.
+Since normalization requires reduction under binders the evaluator must work with open terms.
+We will use de Bruijn levels (\lstinline!Level!) to model variables in open terms.
+The \lstinline!eval! function as usual transforms a term in a given environment into a value which is represented as a function wrapped in a \lstinline!Fun! record.
+The values also include \lstinline!Level!s and \lstinline!Term!s which are introduced by the \lstinline!reify! function.
+The \lstinline!apply! function handles both the standard case of applying a functional value (case \lstinline!Fun!) and the non-standard one which occurs during reification of the value and amounts to emitting the syntax node for application.
+The reification function (\lstinline!reify!) turns a value back into a term.
+When its argument is a \lstinline!Fun! it applies the function \lstinline!f! to a \lstinline!Level! representing unknown variable.
+When reified, a \lstinline!Level! is turned back into de Bruijn index.
+Lastly, reification of an (syntactic) application proceeds recursively.
+The \lstinline!main! function first evaluates a term in an empty environment and then reifies it back into its normal form.
+As usual, we will keep the environment implementation unchanged during the transformation and we annotate the functional values to be named \lstinline!Closure!.
+
+\begin{figure}
+  % \lstset{basicstyle=\ttfamily\color{black}\footnotesize}
+  \lstinputlisting[numbers=left,firstline=29,lastline=65]{interpreters/out/normalization-by-evaluation.rkt}
+  \caption{A strong call-by-value machine for \LC{}}
+  % \lstset{basicstyle=\ttfamily\color{black}}
+  \label{fig:studies-nbe-machine}
+\end{figure}
+
+The transformed normalization function is presented in Figure \ref{fig:studies-nbe-machine}.
+We notice that the machine has two classes of continuations.
+The first set (handled by \lstinline!continue1!) is responsible for the control-flow of reification procedure.
+The second set (handled by \lstinline!continue!) is responsible for the control-flow of evaluation and for switching to reification mode.
+We observe that the stack used by the machine consists of a prefix of only evaluation frames and a suffix of only reification frames.
+The machine switches between evaluation and reification in three places.
+In line 3 reification of a closure requires evaluation of its body therefore machine uses \lstinline!apply1! to evaluate the closure with a \lstinline!Level! as an argument.
+The switch in other direction is due to evaluation finishing: in line 32 a closure's body has been evaluated and has to be reified and then enclosed in an \lstinline!Abs! (enforced by the \lstinline!Fun2! frame); in line 35 the initial term has been reduced and the value can be reified.
+The machine is somewhat similar to the one obtained by Ager et al. \cite{ager-interpreter-compiler} (modulo handling of variables in open terms; they use mutable state to obtain fresh strings) but arguably more legible due to naming of both source and result configuration and marginally better names of continuations.

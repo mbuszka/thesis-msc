@@ -86,11 +86,22 @@ Despite these successes and its mechanical nature, the functional correspondence
 Therefore it was my goal to give an algorithmic presentation of the functional correspondence and implement this algorithm in order to build a semantics transformer.
 In this thesis I describe all steps required to successfully convert the human-aided derivation into a computer algorithm for transforming evaluators into a representation of an abstract machine.
 In particular I characterize the control-flow analysis as the basis for both selective continuation-passing style transformation and partial defunctionalization.
-In order to obtain correct, useful and computable analysis I employ the abstracting abstract machines methodology \cite{aam} which allows for deriving the analysis from an abstract machine for the meta-language.
+In order to obtain correct, useful and computable analysis I employ the abstracting abstract machines methodology (AAM) \cite{aam} which allows for deriving the analysis from an abstract machine for the meta-language.
 This derivation proved very capable in handling the non-trivial language containing records, anonymous functions and pattern matching.
 The resulting analysis enables automatic transformation of user specified parts of the interpreter as opposed to whole-program-only transformations.
 I implemented the algorithm in the \emph{Haskell} programming language giving raise to a tool --- \texttt{semt} --- performing the transformation.
-I evaluated the performance of the tool on multiple interpreters for a diverse set of programming language calculi and in the process I derived a first to my knowledge machine implementing strong call-by-value strategy.
+I evaluated the performance of the tool on multiple interpreters for a diverse set of programming language calculi.
+
+The two transformations which form the functional correspondence have been studied and proven correct in various settings.
+The transformation to continuation-passing style is often used in the context of compilation of programming languages \cite{appel-compiling-with-continuations}.
+In particular selective variants of the transformation have been proposed and proven in context of control operators \cite{nielsen-cps}.
+The main approach to distinguishing terms which should be transformed is to provide a type system annotated with required information.
+The defunctionalization can also be used as a compilation technique but it has not seen as much use as other transformations such as closure conversion.
+Nevertheless there are formulations of defunctionalization based on control-flow analysis results \cite{design-and-correctness-cfa} which were proven correct.
+As with the CPS transformation, the information is also embedded in a type system.
+I chose to base both transformations on a separately computed control-flow analysis as it allowed me to choose the analysis which best suited the meta-language.
+By using the AAM methodology I obtained results enabling powerful transformations without the implementation complexity of type inference, requiring annotations in the source program or turning two type systems into constraint-based analyses.
+
 
 % Akapit o related work z cps i defunkcjonalizacji, wytłumaczyć jak się różnią od tego co zrobiłem, dlaczego robię to trochę inaczej, skontrastować z literaturą i podkreślić, że wiem co tam się dzieje oraz to co wybrałem fajnie działa.
 
