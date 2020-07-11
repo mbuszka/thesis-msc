@@ -2,6 +2,7 @@
 \subsection*{Installation}
 The semantic transformer -- \semt{} is built from source using \lstinline!cabal! -- a \textit{Haskell} package manager.
 To build the binary use \lstinline!cabal build! and to install the resulting binary use \lstinline!cabal install! in the root of the project.
+Use \lstinline!make test! to test the tool on the provided interpreters which are located in \lstinline!interpreters/src! directory.
 
 \subsection*{Tool usage}
 The basic mode of usage is to transform a \lstinline!file.rkt! containing an interpreter into \lstinline!out/file.rkt! which is a source file containing the transformed interpreter, i.e., an abstract machine using the command \lstinline!semt file.rkt!.
@@ -38,31 +39,25 @@ The preamble (everything up to the \lstinline!; begin interpreter! marker in lin
 Afterwards an interpreter is specified (lines 4 -- 31) and it ends with another marker \lstinline!; end interpreter! in line 32.
 Everything following the marker is again copied to the output file.
 In the example this space is used to define some tests for the interpreter.
-The syntax of \IDL{} is given in Figure \ref{fig:idl-syntax}.
 
-\subsection*{Top-level definitions}
+\subsection*{Syntax}
+The syntax of \IDL{} is given in Figure \ref{fig:idl-syntax}.
 The interpreter consists of a sequence of datatype (\textit{data-def}), record (\textit{struct-def}) and function (\textit{fun-def}) definitions.
 One of the functions must be named \lstinline!main! and will serve as an entry point of the interpreter.
-It is required for the \lstinline!main! function to have parameters annotated with types, e.g., \lstinline!(def main ([String foo]$\;$[Any e])$\;$body)!.
-Names (\textit{tp-name}) of datatypes and records must be unique distinct from base types (\textit{base-tp} and \lstinline!Any!).
+It is required for the \lstinline!main! function to have parameters annotated with types, e.g., \lstinline!(def main ([Term term])$\;$body)!.
+Names (\textit{tp-name}) of datatypes and records must be unique and distinct from base types (\textit{base-tp} and \lstinline!Any!).
 All definitions may be mutually recursive.
-
-\subsection*{Terms}
-The term syntax is split into terms and statements where the latter appear as the bodies of function definitions (both top-level and anonymous) and branches.
+The term syntax is split into terms (\textit{term}) and statements (\textit{statements}) where the latter appear as the bodies of function definitions (both top-level and anonymous) and branches.
 Statements are sequences of let-bindings terminated by a regular term (see lines 16--19 of Figure \ref{fig:idl-example}).
+Variables (\textit{var}) and type names (\textit{tp-name}) may consist of \textit{ASCII} letters, decimal digits and symbols in \lstinline!-+/*_?<!.
+Variables begin either with a lower-case letter or symbol and type names begin with an upper-case letter.
 
 \subsection*{Execution}
-In order to run the interpreter a library with syntax definitions must be imported.
-Let us assume the following directory structure:
-\begin{lstlisting}
-interpreters/
-  src/
-    lambda-value.rkt
-  lib/
-    idl.rkt
-\end{lstlisting}
-Where \lstinline!idl.rkt! is the library of syntax definitions provided with this thesis and \lstinline!lambda-value.rkt! is the file we want to execute.
-Then it suffices to add \lstinline!(require "../lib/idl.rkt")! (line 2 of the example) at the top of the file.
+In order to run an interpreter embedded in a source file, the library with syntax definitions (\lstinline!idl.rkt!) provided with this thesis must be imported.
+The file is located in the source tree of the project in the \lstinline!interpreters/lib/! directory.
+
+% \subsection{Examples}
+% Example interpreters are available in the \lstinline!interpreters/src! directory of the 
 
 The run-time behavior of the program follows the call-by-value behavior of \emph{Racket}, e.g.:
 \begin{itemize}
@@ -71,6 +66,7 @@ The run-time behavior of the program follows the call-by-value behavior of \emph
   \item Application evaluates terms left-to-right and then applies the value in function position.
   \item \lstinline!match! evaluates the term under scrutiny and tests patterns against the value in order of their definition continuing with the first match.
 \end{itemize}
+The interpreters may use the following builtin operations: \lstinline!+!, \lstinline!-!, \lstinline!*!, \lstinline!/!, \lstinline!neg!, \lstinline!not!, \lstinline!and!, \lstinline!or!, \lstinline!eq?!, \lstinline!<! with the usual semantics.
 
 \subsection*{Annotations}
 \begin{itemize}

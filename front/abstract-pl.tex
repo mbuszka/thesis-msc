@@ -1,1 +1,11 @@
-\polishabstract{\dots}
+\polishabstract{%
+W pracy pokazuję jak przekształcić ręczną metodę derywacji, znaną jako odpowiedniość funkcyjna pomiędzy ewaluatorami i maszynami abstrakcyjnymi, w uniwersalny algorytm.
+
+Zaczynając od klasycznego sformułowania metodologii, składającego się z dwóch transformacji kodu źródłowego wymagających pracy człowieka, wskazuję na analizę przepływu sterowania jako podstawę do ich algorytmizacji.
+Następnie definiuję meta-język \IDL{} i przedstawiam trzy główne etapy automatycznej procedury: transformację do adminstracyjnej postaci normalnej, wybiórczą transformację do stylu przekazywania kontynuacji oraz wybiórczą defunkcjonalizację.
+Pokazuję także procedurę pozwalającą na obliczenie analizy przepływu sterowania dla programów w \IDL{}, którą otrzymałem stosując metodologię abstrahowania maszyn abstrakcyjnych.
+
+Do pracy dołączona jest implementacja algorytmu w postaci programu używanego z wiersza poleceń.
+Pozwala ona na transformację interpretera zanużonego w pliku źródłowym w języku \textit{Racket} oraz zapewnia precyzyjną kontrolę nad kształtem wynikowej maszyny.
+W pracy przedstawiam zbiór przykładowych interpreterów na których obrazuję działanie narzędzia i algorytmu poprzez derywację zarówno znanych jak i nowych maszyn abstrakcyjnych.
+}

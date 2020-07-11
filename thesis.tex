@@ -1,15 +1,19 @@
 \documentclass[english, mgr, shortabstract]{iithesis}
 
 \usepackage[backend=biber,sorting=none,language=english]{biblatex}
+\AtEveryBibitem{%
+  \clearfield{url}
+  \clearfield{doi}
+}
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{stmaryrd}
-\usepackage{listings}
+\usepackage{listings} 
 \usepackage{multirow}
 \usepackage{makecell}
 \usepackage{xcolor}
 
-\usepackage[scale=0.8]{FiraMono}
+\usepackage[scale=0.8]{FiraMono} 
 
 \lstdefinelanguage{idl}{%
   alsoletter={-?\#:},
@@ -83,7 +87,7 @@
 
 \englishtitle{The Functional Correspondence Applied:\fmlinebreak An Implementation of a Semantics Transformer}
 
-\polishtitle{\dots}
+\polishtitle{Zastosowanie odpowiednio\'{s}ci funkcyjnej \fmlinebreak do implementacji transformatora semantyk}
 
 \advisor{dr hab. Dariusz Biernacki}
 

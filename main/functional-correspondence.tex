@@ -1,5 +1,5 @@
 \chapter{The Functional Correspondence}\label{chapter:functional-correspondence}
-The functional correspondence between evaluators and abstract machines is a technique for mechanical derivation of an abstract machine from a given evaluator.
+The functional correspondence between evaluators and abstract machines is a technique for mechanical derivation of an abstract machine from a given evaluator.\footnote{It may also be used in the other direction, i.e., to derive an interpreter corresponding to an abstract machine, by using inverse transformations.}
 The technique was first characterized and described in \cite{functional-correspondence} and then later studied in context of various object-languages and their evaluators in \cite{ager-interpreter-compiler,ager-call-by-need,pirog-stg,biernacki-logic-engine,biernacka-delimited-continuations,ager-monadic-evaluators,danvy-object-oriented,jedynak-ltac}.
 The input of the derivation is an evaluator written in some functional meta-language.
 It usually corresponds to a variant of denotational semantics (particularly in case of so-called meta-circular interpreters) or big-step operational semantics.
@@ -7,15 +7,15 @@ The result of the derivation is a collection of mutually tail-recursive, first-o
 Program in such a form corresponds to an abstract machine.
 The different functions (with actual parameters) represent states of the machine, while the function calls specify the transition function.
 
-The derivation consists of two program (in our case interpreter's) transformations: transformation to continuation-passing style and defunctionalization.
+The derivation consists of two program (in our case interpreter) transformations: transformation to continuation-passing style and defunctionalization.
 The first one exposes the control structure of the evaluator; the second replaces function values with first-order data structures and their applications with calls to a first-order global function.
 
 In the remainder of this chapter I will describe those transformations and illustrate their behavior using the running example of an evaluator for \LC{} from Section \ref{sec:idl}.
 Let us recall the previously described meta-circular interpreter of Figure \ref{fig:lambda-calc-interp}.
 The variables are represented as \lstinline!String!s of characters.
-Since every expression in \LC{} may only evaluate to a function, the values produced by the interpreter are represented as meta-language functions.
+Since every closed expression in \LC{} may only evaluate to a function, the values produced by the interpreter are represented as meta-language functions.
 The interpreter uses environments represented as partial functions from variables to values to handle binding of values to variables during application.
-The application in object-language is interpreted using application in meta-language so the defined language inherits call-by-value, left-to-right evaluation order.
+The application in the object-language is interpreted using application in the meta-language, so the defined language inherits call-by-value, left-to-right evaluation order.
 At the end of this chapter we shall arrive at the CEK machine.
 
 \section{Continuation-Passing Style}
@@ -43,7 +43,7 @@ Function application is transformed by placing all sub-expressions in successive
 This way the evaluation of arguments is sequenced left-to-right and happens before the application.
 Translation of the \lstinline{match} expression requires translating the scrutinee and putting the branches in the continuation. The branches are all transformed using the same continuation $k$.
 Finally, during translation of the \texttt{error} expression the continuation is discarded since the error halts the execution.
-The omitted rules for \texttt{if} expressions and record creation are similar to \texttt{match} expressions and applications respectively.
+The omitted rules for \texttt{if} expressions and record creation are similar to \texttt{match} expressions and applications, respectively.
 
 Figure \ref{fig:lambda-calc-interp-cps} shows the interpreter with body of \lstinline!eval! translated to CPS using the algorithm of Figure \ref{fig:cps-translation} and then hand-optimized by reducing administrative redexes.
 The \lstinline!eval! function now takes an additional argument \lstinline!k! -- a continuation.
@@ -118,7 +118,7 @@ Every application of unknown function is replaced with a specific top-level \tex
 
 This simple description glosses over many important details.
 Firstly, we must distinguish between known and unknown function calls as only unknown calls should be transformed.
-Secondly, we must be able to create records for top-level definitions when they are passed as a first class function, e.g., in the definition of \lstinline{eval} in the branch for variables we apply an unknown function \lstinline{env} which may evaluate either to an anonymous function created by \lstinline{extend} or a top-level function \lstinline{init}.
+Secondly, we must be able to create records for top-level definitions when they are passed as a first-class function, e.g., in the definition of \lstinline{eval} in the branch for variables we apply an unknown function \lstinline{env} which may evaluate either to an anonymous function created by \lstinline{extend} or a top-level function \lstinline{init}.
 Lastly, we must somehow know for each application point which functions may be applied.
 The first two challenges can be solved with a static, syntactic analysis of the interpreter.
 The other challenge can be solved using control-flow analysis as described in Section \ref{sec:selective-defun}.
@@ -157,22 +157,21 @@ For the purposes of this example we observe that there are three function spaces
 \end{figure}
 
 Figure \ref{fig:den-interp} depicts an overview of defunctionalization procedure with \textit{apply} functions generated according to the template in Figure \ref{fig:den-template}.
-We assume that every definition and expression in program has a unique label and that all generated names and structure labels are fresh. 
+We assume that every definition and expression in a program has a unique label and that all generated names and structure labels are fresh. 
 Whenever a top-level function is called the application is transformed into top-level call with the sub-expressions transformed.
-Any other application is transformed into a call to \texttt{apply-l} where l is the application's label.
+Any other application is transformed into a call to \texttt{apply-l} where \texttt{l} is the application's label.
 Anonymous functions are transformed into a labeled record with the function's free variables as sub-expressions.
 Finally, references to top-level functions occurring in the program are transformed into labeled records.
 The template in Figure \ref{fig:den-template} is instantiated as follows:
 \begin{itemize}
     \item \texttt{l} is a label of application expression for which \texttt{apply-l} is generated
-    \item \texttt{l-1} $\ldots$ \texttt{l-n} are labels of functions which may be applied in \texttt{l};
+    \item \texttt{l-1} $\ldots$ \texttt{l-n} are labels of functions which may be applied in \texttt{l}
     \item \texttt{x ...} are variables bound by these functions (notice that it requires renaming of bound variables)
     \item (\texttt{y-1 ...}) $\ldots$ (\texttt{y-n ...}) are free variables of these functions
     \item \texttt{e-1} \ldots \texttt{e-n} are already transformed bodies of these functions
 \end{itemize}
 It is worth noting that defunctionalization preserves the tail-call property of a program in CPS.
-
-After applying the defunctionalization procedure to functions representing lambda abstractions and to continuations we obtain (again with a bit of manual cleanup) an encoding ot the CEK machine \cite{Felleisen} in Figure \ref{fig:abstract-machine-cek}. 
+After applying the defunctionalization procedure to functions representing lambda abstractions and to continuations we obtain (again with a bit of manual cleanup) an encoding of the CEK machine \cite{Felleisen} in Figure \ref{fig:abstract-machine-cek}. 
 It uses a stack \lstinline!Cont! (which are defunctionalized continuations) to handle the control-flow and \lstinline!Closure!s (which are defunctionalized lambda abstractions) to represent functions.
 The environment is left untouched and is still encoded as a partial function.
 The machine has two classes of states: \lstinline!eval! and \lstinline!continue!.
@@ -180,7 +179,7 @@ In \lstinline!eval! mode the machine dispatches on the shape of the term and eit
 The \lstinline!continue! function is the \textit{apply} function generated by the defunctionalization procedure.
 In \lstinline!continue! mode the machine checks the continuation and proceeds accordingly: when it reaches the bottom of the continuation stack \lstinline!Halt! it returns the final value \lstinline!val!; when the continuation is \lstinline!App1! it means that \lstinline!val! holds the function value which will be applied once \lstinline!arg! is computed; the stack frame \lstinline!App2! signifies that \lstinline!val! holds the computed argument and the machine calls a helper function \lstinline!apply! (the second generated \textit{apply} function) to unpack the closure in \lstinline!fn! and evaluate the body of the closure in the extended environment. 
 
-\begin{figure}
+\begin{figure}[hb]
 \begin{lstlisting}
 (def-data Term ...)
 

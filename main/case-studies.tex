@@ -4,10 +4,10 @@ Figure \ref{fig:tested-interpreters} shows a summary of interpreters on which I 
 The first group of interpreters is denotational (mostly meta-circular) in style and covers various extensions of the base \LC{} with call-by-value evaluation order.
 The additions I tested include: integers with addition, recursive let-bindings, delimited control operators -- \textit{shift} and \textit{reset} with CPS interpreter based on \cite{biernacka-delimited-continuations} and exceptions in two styles: monadic with exceptions as values (functions return either value or an exception) and in CPS with success and error continuations.
 The last interpreter for call-by-value in Figure \ref{fig:tested-interpreters} is a normalization function based on normalization by evaluation technique transcribed from \cite{abel-nbe}.
-The next three interpreters correspond to big-step operational semantics for call-by-name \LC{}, call-by-need (call-by-name with memoization) and a simple imperative language respectively.
+The next three interpreters correspond to big-step operational semantics for call-by-name \LC{}, call-by-need (call-by-name with memoization) and a simple imperative language, respectively.
 
-Transformation of call-by-value and call-by-need \LC{} yielded machines very similar to the CEK and Krivine machines respectively.
-I was also able to replicate the machines previously obtained via manual application of the functional correspondence (\cite{functional-correspondence,biernacka-delimited-continuations,biernacki-logic-engine})
+Transformation of call-by-value and call-by-need \LC{} yielded machines very similar to the CEK and Krivine machines, respectively.
+I was also able to replicate the machines previously obtained via manual application of the functional correspondence (\cite{functional-correspondence,biernacka-delimited-continuations,biernacki-logic-engine}).
 The biggest differences were due to introduction of administrative transitions in handling of applications.
 This property hints at a potential for improvement by introducing an inlining step to the transformation.
 An interesting feature of the transformation is the ability to select which parts of the interpreter should be transformed and which should be considered atomic.
@@ -62,7 +62,7 @@ To this end I show a derivation of a machine performing applicative order normal
 Let us begin with an encoding of natural semantics for a simple imperative language shown in Figure \ref{fig:studies-imp}.
 The first two functions provide an implementation of memory (a mapping from locations to values -- integers) as a function.
 Since we are not interested in implementation strategy of the memory, the function \lstinline!init-state! and the anonymous function beginning in 4th line are both annotated with \lstinline!#:atomic! and \lstinline!#:no-defun!.
-Together with \lstinline!#:atomic! annotation on \lstinline!update-state! it ensures that after the transformation, operations on memory (both updates and look ups) will be treated as builtin operations of the machine.
+Together with \lstinline!#:atomic! annotation on \lstinline!update-state! it ensures that after the transformation, operations on memory (both updates and lookups) will be treated as builtin operations of the machine.
 Following the natural semantics, functions \lstinline!aval! and \lstinline!bval! define valuations of arithmetic and boolean expressions.
 They are also marked as \lstinline!#:atomic! since they are pure and side-effect free.
 The \lstinline!eval! function is a straightforward translation of the deduction rules of the natural semantics.
@@ -86,11 +86,11 @@ We can see that the machine uses a stack of continuations to handle sequencing o
 Even though loops introduce a stack frame, only one frame is present on the stack for a given \lstinline!While! command regardless of number of iterations.
 This frame is responsible for continuing the iteration after the body of the loop has been executed.
 The final continuation \lstinline!Halt! is provided by the \lstinline!main! function which builds the initial configuration and starts the machine.
-The clause for \lstinline!Halt! extracts the result from final configuration.
+The clause for \lstinline!Halt! extracts the result from the final configuration.
 
 The names for continuations, the \lstinline!continue! function as well as its parameters have been generated without any assistance from the user and contribute to the readability of the machine.
 The machine is formulated in a natural way, considering it works directly on abstract syntax of the language rather than a series of instructions.
-This manifests in usage of runtime continuation stack instead of goto instructions directly in the instruction sequence.
+This manifests in usage of runtime continuation stack instead of \textit{goto} instructions directly in the instruction sequence.
 
 \section{Call-by-value \LC{} with exceptions}
 \begin{figure}
@@ -126,7 +126,7 @@ The function is kept in direct style as intended.
 
 Let us now turn to the transition functions: \lstinline!eval! and \lstinline!continue!.
 The sequencing of operations has been split between the two functions.
-To evaluate an application in object-language first the \lstinline!fn! expression is evaluated (line 6) with \lstinline!App1! continuation pushed onto the stack.
+To evaluate an application in the object-language first the \lstinline!fn! expression is evaluated (line 6) with \lstinline!App1! continuation pushed onto the stack.
 When the control reaches this frame (lines 24-27), \lstinline!var3! contains either an exception or the computed value for the function.
 In the \lstinline!Ok! case, the argument \lstinline!arg! and the environment \lstinline!env! are restored and evaluated with \lstinline!Ok1! frame pushed onto the stack.
 Finally, when control reaches \lstinline!Ok1! and \lstinline!var3! holds a value, the function value is popped from the stack and applied to the argument (line 23).
@@ -134,7 +134,7 @@ Looking at the \lstinline!continue! function we can see that if it is passed an 
 In case of the latter the machine finishes execution with \lstinline!Err! value.
 In case of the former a handling expression is evaluated in the saved environment extended with the exception code. 
 
-\section{Normalization by Evaluation for call-by-value \LC{}}
+\section{Normalization by Evaluation for \LC{}}
 
 \begin{figure}
   % \lstset{basicstyle=\ttfamily\color{black}\footnotesize}
@@ -177,4 +177,8 @@ We observe that the stack used by the machine consists of a prefix of only evalu
 The machine switches between evaluation and reification in three places.
 In line 3 reification of a closure requires evaluation of its body therefore machine uses \lstinline!apply1! to evaluate the closure with a \lstinline!Level! as an argument.
 The switch in other direction is due to evaluation finishing: in line 32 a closure's body has been evaluated and has to be reified and then enclosed in an \lstinline!Abs! (enforced by the \lstinline!Fun2! frame); in line 35 the initial term has been reduced and the value can be reified.
-The machine is somewhat similar to the one obtained by Ager et al. \cite{ager-interpreter-compiler} (modulo handling of variables in open terms; they use mutable state to obtain fresh strings) but arguably more legible due to naming of both source and result configuration and marginally better names of continuations.
+The machine we obtained has, to my knowledge, not been described in the literature.
+It is somewhat similar to the one obtained by Ager et al. \cite{ager-interpreter-compiler} who also used the functional correspondence to derive the machine.
+Their machine uses meta-language with mutable state in order to generate fresh identifiers for variables in open terms instead of de Bruijn levels and it operates on compiled rather than source terms.
+The machine we obtained using \semt{} can also be considered more legible due to naming of both source and result configuration and marginally better names of continuations.
+% Ta maszyna jest w pewnym sensie nowa (tzn użyliśmy narzędzia, żeby stworzyć nową maszynę która dotychczas nie była opisywana)

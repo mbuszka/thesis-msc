@@ -3,20 +3,20 @@ The adaptation of the functional correspondence into a semantics transformer was
 Although the two main transformations considered here are widely known, they are not presented in literature in a form directly applicable for the task.
 As the goal of the algorithm is to produce a definition of an abstract machine, to be read as a source code, care has to be taken to produce readable results.
 To this end I chose to allow for partial CPS translation, with functions which should be left alone marked with annotations.
-This approach allows one to specify helper functions whose control-flow is not particularly interesting to capture such as environment lookups.
+This approach allows one to specify helper functions whose control flow is not particularly interesting to capture such as environment lookups.
 The defunctionalization is usually presented as a manual transformation with human-specified function spaces or in a type directed fashion.
 Neither of these approaches are satisfying for the purposes of a semantics transformer as the goal is to produce the result automatically and to uncover the operational properties of the evaluator.
 Additionally I wanted to allow for partial defunctionalization of programs as it permits one to keep some parts of the machine abstract (e.g., functions modelling a heap or an environment).
 I chose to employ the control-flow analysis to guide partitioning of function spaces as it approximates the runtime behavior of programs.
-This approach allows for functions of the same type to land in different spaces based on their usage and it performed satisfactory in experiments I have conducted.
+This approach allows for functions of the same type to land in different spaces based on their usage and it performed satisfactorily in experiments I have conducted.
 Finally, as the transformation generates new variables and moves code around we have to keep them readable.
 To this end I both allow for (optional) program annotations and employ heuristics to guide generation of names for function records, introduced variables and functions.
 
 The abstract syntax of \IDL{} is presented in Figure \ref{fig:idl-abs-syntax}.
-The meta-variables $x, y, z$ denote variables; $r$ denote structure (aka record) names; $s$ is used to denote string literals and $b$ is used for all literal values -- strings, integers and booleans.
+The meta-variables $x, y, z$ denote variables; $r$ denotes structure (aka record) names; $s$ is used to denote string literals and $b$ is used for all literal values -- strings, integers and booleans.
 The meta-variable $\mathit{tp}$ is used in pattern matches which check whether a value is one of the primitive types.
 The patterns are referred to with variable $p$ and may be a variable, a literal value, a wildcard, a record pattern or a type test.
-Terms are denoted with variable $t$ and are one of variable, literal value, anonymous function, application, record constructor, let binding (which may destructure bound term with a pattern), pattern match or an error expression.
+Terms are denoted with variable $t$ and are either a variable, a literal value, an anonymous function, an application, a record constructor, a let binding (which may destructure bound term with a pattern), a pattern match or an error expression.
 
 The transformation described in this chapter consists of three main stages: translation to administrative normal form, selective translation to continuation-passing style and selective defunctionalization.
 After defunctionalization the program is in the desired form of an abstract machine.
@@ -24,7 +24,7 @@ The last step taken by the transformer is inlining of administrative let-binding
 In the remainder of this chapter I will describe the three main stages of the transformation and the algorithm used to compute the control-flow analysis.
 
 
-\begin{figure}
+\begin{figure}[t]
 \begin{center}
 \begingroup
 \setlength{\tabcolsep}{2pt}
@@ -51,7 +51,7 @@ In the remainder of this chapter I will describe the three main stages of the tr
 \section{Administrative Normal Form}
 The administrative normal form (ANF) \cite{flanagan-anf} is an intermediate representation for functional languages in which all intermediate results are let-bound to names.
 This shape greatly simplifies later transformations as programs do not have complicated sub-expressions.
-From operational point of view, the only place where a continuation is grown when evaluating program in ANF is a let-binding.
+From the operational point of view, the only place where a continuation is grown when evaluating program in ANF is a let-binding.
 This property ensures that a program in ANF is also much easier to evaluate using an abstract machine which will be taken advantage of in Section \ref{sec:transformer-cfa}.
 The abstract syntax of terms in ANF and an algorithm for transforming \IDL{} programs into such form is presented in Figure \ref{fig:transformer-anf}.
 The terms are partitioned into three levels: variables, commands and expressions.
@@ -59,17 +59,12 @@ Commands $c$ extend variables with values -- base literals, record constructors 
 Expressions $e$ in ANF have the shape of a possibly empty sequence of let-bindings ending with either an error term or a command.
 
 The $\anf{\cdot}{\cdot}$ function, written in CPS, is the main transformation function.
-Its arguments are term to be transformed and a meta-continuation (i.e., a continuation in meta-language) which will be called to obtain the term for the rest of transformed input.
+Its arguments are term to be transformed and a meta-language continuation  which will be called to obtain the term for the rest of the transformed input.
 This function decomposes the term according to the evaluation rules and uses two helper functions.
-Function $\atomic{\cdot}$ transforms a continuation expecting an atomic expression (which are created when transforming commands) into one accepting any command by let-binding passed argument $c$ when necessary.
+Function $\atomic{\cdot}$ transforms a continuation expecting an atomic expression (which are created when transforming commands) into one accepting any command by let-binding the passed argument $c$ when necessary.
 Function $\anfSeq{\cdot}{\cdot}$ sequences computation of multiple expressions by creating a chain of let-bindings (using $\atomic{\cdot}$) and then calling the continuation with created variables.
 
-% TODO:
-% - better characterization of the ANF
-% - describe the algorithm
-% - explain why this particular form
-
-\begin{figure}
+\begin{figure}[t]
 \begin{center}
 \begingroup
 \setlength{\tabcolsep}{2pt}
@@ -132,7 +127,7 @@ There are a couple of different approaches to performing this analysis available
 I chose to employ the last approach as it allows for derivation of the control-flow analysis from an abstract machine for \IDL{}.
 The derivation technique guarantees correctness of the resulting interpreter and hence provides high confidence in the actual implementation of the machine.
 I will present the template for acquiring both concrete and abstract versions of the abstract machine for \IDL{} but refrain from stepping through the whole derivation.
-An interested reader should definitely acquaint themselves with the original work in \cite{aam} to understand the reasoning and insights behind the technique.
+To understand the reasoning and insights behind the technique I highly recommend reading the original work in \cite{aam}.
 
 \subsection*{A Machine Template}
 We will begin with a template of a machine for \IDL{} terms in A-normal form presented in Figure \ref{fig:anf-abstract-machine}.
@@ -156,8 +151,8 @@ The first case of the transition relation $\Rightarrow$ looks up a pointer for t
 It modifies the store via $\mathit{copy}$ function which ensures that every occurrence of a variable has a corresponding binding in the store.
 The next three cases deal with values by $\mathit{alloc}$ating them in the store and switching to the continuation mode.
 When the machine encounters a let-binding it allocates a continuation for the body $e$ of the expression and proceeds to evaluate the bound command $c$ with the new pointer $\kappa'$.
-In case of applications and match expressions the resulting configuration is decided using auxiliary functions $\mathit{apply}$ and $\mathit{match}$ respectively.
-Finally, in continuation mode, may transition if the continuation loaded from address $\kappa$ is a frame.
+In case of applications and match expressions the resulting configuration is decided using auxiliary functions $\mathit{apply}$ and $\mathit{match}$, respectively.
+Finally, in the continuation mode, the machine may only transition if the continuation loaded from the address $\kappa$ is a frame.
 In such a case the machine matches the stored pattern against the value pointed-to by $\nu$.
 Otherwise $\kappa$ points to a $\tuple{}$ instead and the machine has reached the final state.
 The auxiliary function $\mathit{apply}$ checks what kind of function is referenced by $\nu$ and proceeds accordingly.
@@ -258,7 +253,7 @@ Figure \ref{fig:aam} shows the missing pieces of an abstract abstract machine fo
 The abstract values use base type names $tp$ to represent any value of that type, abstract versions of primitive operations, records, closures and top-level functions.
 The interpretation of primitive operations must approximate their concrete counterparts.
 
-The store is represented as a pair of finite mappings from labels to sets of abstract values and continuations respectively.
+The store is represented as a pair of finite mappings from labels to sets of abstract values and continuations, respectively.
 This bounding of store domain and range ensures that the state-space of the machine becomes finite and therefore can be used for computing an analysis.
 To retain soundness w.r.t. the concrete abstract machine the store must map a single address to multiple values to account for address reuse.
 This style of abstraction is fairly straightforward as noted by \cite{aam} and used in textbooks \cite{popa}.
@@ -325,12 +320,12 @@ The store will be assembled from datatype and structure definitions of the progr
 The initial term is the body of the \lstinline!main! function of the interpreter and the environment is the global environment extended with \lstinline!main!'s parameters bound to pointers to datatypes in the above-built store.
 The initial continuation is of course $\tuple{}$ and the pointer is the label of the \lstinline!main!'s body.
 The analysis is computed by performing fixed-point iteration of $\Rightarrow_a$.
-The resulting store will contain a set of functions to which every variable (the only allowed term) in function position may evaluate to (ensured by the use of $\mathit{copy}_v$ function).
+The resulting store will contain a set of functions to which every variable (the only allowed term) in function position may evaluate (ensured by the use of $\mathit{copy}_v$ function).
 This result will be used in Sections \ref{sec:selective-cps} and \ref{sec:selective-defun}.
 
 \section{Selective CPS}\label{sec:selective-cps}
 In this section we will formulate an algorithm for selectively transforming the program into continuation-passing style.
-All functions (anonymous and top-level) marked \lstinline!#:atomic! by the user will be kept in direct style.
+All functions (both anonymous and top-level) marked \lstinline!#:atomic! by the user will be kept in direct style.
 The \lstinline!main! function is implicitly marked as atomic since its interface should be preserved as it is an entry point of the interpreter.
 Primitive operations are treated as atomic at call-site.
 Atomic functions may call non-atomic ones by providing the called function an identity continuation.
@@ -376,7 +371,7 @@ The algorithm consists of two mutually recursive transformations: $\cps{e}{k}$ i
   \label{fig:cps-cps}
   \end{figure}
   
-  \begin{figure}[]
+  \begin{figure}[t]
   \centering
   \begin{tabular}{rl}
     $\dir{x}$ &= $x$\\
@@ -413,7 +408,7 @@ The algorithm consists of two mutually recursive transformations: $\cps{e}{k}$ i
   
     $\dir{\lstinline!(error$\;s$)!}$ &= \lstinline!(error $s$)!
   \end{tabular}
-  \caption{A translation for direct style terms}
+  \caption{A translation for terms which should be left in direct style}
   \label{fig:cps-direct}
   \end{figure}
   
@@ -436,8 +431,8 @@ The algorithm consists of two mutually recursive transformations: $\cps{e}{k}$ i
   \label{fig:cps-trivial}
   \end{figure}
 
-The first five clauses of CPS translation deal with values.
-When a variable is encountered it may be immediately returned by applying continuation.
+The first five clauses of the CPS translation deal with values.
+When a variable is encountered it may be immediately returned by applying a continuation.
 In other cases the value must be let-bound in order to preserve the A-normal form of the term and then the continuation is applied to the introduced variable.
 The body $e$ of an anonymous function is translated using $\dir{e}$ when the function is marked atomic.
 When the function is not atomic a new variable $k'$ is appended to its parameter list and its body is translated using $\cps{e}{k'}$.
@@ -453,15 +448,15 @@ This continuation uses the variable $x$ as its argument and its body is the body
 The bound command is transformed with the newly introduced continuation $k'$.
 Finally, the translation of \lstinline!error! throws out the continuation.
 
-The direct style transformation begins similarly to CPS one -- with five clauses for values.
-In case of an application the algorithm is symmetric: when all functions are atomic the call remains in direct style, when none of them are atomic a new identity continuation $k$ is constructed and is passed to the called function.
+The transformation for terms which should be kept in direct style begins similarly to the CPS one -- with five clauses for values.
+In case of an application the algorithm considers two possibilities: when all functions are atomic the call remains in direct style, when none of them are atomic a new identity continuation $k$ is constructed and is passed to the called function.
 A match expression is again transformed recursively.
 A let binding of a call to cps function gets special treatment to preserve A-normal by chaining allocation of identity continuation with the call.
 In other cases a let binding is transformed recursively.
 An \lstinline!error! expression is left untouched.
 
 Each top-level function definition in a program is transformed in the same fashion as anonymous functions.
-After the transformation the program is still in ANF and can be again analyzed by the abstract abstract machine of previous section. 
+After the transformation the program is still in ANF and can be again analyzed by the abstract abstract machine of the previous section. 
 
 
 
@@ -470,7 +465,7 @@ The second step of the functional correspondence and the last stage of the trans
 The goal is to defunctionalize function spaces deemed interesting by the author of the program.
 To this end top-level and anonymous functions may be annotated with \lstinline!#:no-defun! to skip defunctionalization of function spaces they belong to.
 In the algorithm of Figure \ref{fig:defun} the predicate $\defun$ specifies whether a function should be transformed.
-Predicates $\mathit{primOp}$ and $\mathit{topLevel}$ specify whether a variable refers to (taking into account the scoping rules) primitive operation or top-level function respectively.
+Predicates $\mathit{primOp}$ and $\mathit{topLevel}$ specify whether a variable refers to (taking into account the scoping rules) primitive operation or top-level function, respectively.
 For each application point $l$ in the program we can utilize the results of control-flow analysis to obtain the set of functions which may be applied.
 If all of them should be defunctionalized ($\mathit{allDefun}$) then a call to the generated apply function is introduced, when none of them should ($\mathit{noneDefun}$) then the application is left as is, if neither condition holds then an error in the source program is signaled.
 The apply functions are generated using $\mkApply$ as specified in Figure \ref{fig:defun-apply} where the $\mathit{fn}\ldots$ is a list of functions which may be applied.
@@ -479,7 +474,7 @@ However it does not pose a problem since the majority of work has already been d
 
 
 
-\begin{figure}
+\begin{figure}[t]
 \centering
 \begin{tabular}{rl}
 
@@ -520,7 +515,7 @@ However it does not pose a problem since the majority of work has already been d
 \label{fig:defun}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[t]
 \centering
 \begingroup
 \setlength{\tabcolsep}{2pt}
