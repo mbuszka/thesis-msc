@@ -59,7 +59,7 @@ Commands $c$ extend variables with values -- base literals, record constructors 
 Expressions $e$ in ANF have the shape of a possibly empty sequence of let-bindings ending with either an error term or a command.
 
 The $\anf{\cdot}{\cdot}$ function, written in CPS, is the main transformation function.
-Its arguments are term to be transformed and a meta-language continuation  which will be called to obtain the term for the rest of the transformed input.
+Its arguments are a term to be transformed and a meta-language continuation  which will be called to obtain the term for the rest of the transformed input.
 This function decomposes the term according to the evaluation rules and uses two helper functions.
 Function $\atomic{\cdot}$ transforms a continuation expecting an atomic expression (which are created when transforming commands) into one accepting any command by let-binding the passed argument $c$ when necessary.
 Function $\anfSeq{\cdot}{\cdot}$ sequences computation of multiple expressions by creating a chain of let-bindings (using $\atomic{\cdot}$) and then calling the continuation with created variables.
@@ -466,8 +466,12 @@ The goal is to defunctionalize function spaces deemed interesting by the author 
 To this end top-level and anonymous functions may be annotated with \lstinline!#:no-defun! to skip defunctionalization of function spaces they belong to.
 In the algorithm of Figure \ref{fig:defun} the predicate $\defun$ specifies whether a function should be transformed.
 Predicates $\mathit{primOp}$ and $\mathit{topLevel}$ specify whether a variable refers to (taking into account the scoping rules) primitive operation or top-level function, respectively.
-For each application point $l$ in the program we can utilize the results of control-flow analysis to obtain the set of functions which may be applied.
-If all of them should be defunctionalized ($\mathit{allDefun}$) then a call to the generated apply function is introduced, when none of them should ($\mathit{noneDefun}$) then the application is left as is, if neither condition holds then an error in the source program is signaled.
+There are three cases to consider when transforming an application.
+If the variable in operator position refers to top-level function or primitive operation it can be left as is.
+Otherwise we can utilize the results of control-flow analysis to obtain the set of functions which may be applied.
+When all of them should be defunctionalized ($\mathit{allDefun}$) then a call to the generated apply function is introduced, when none of them should ($\mathit{noneDefun}$) then the application is left as is.
+In every case the arguments are also transformed recursively.
+If the requirements are mixed then an error in the source program is signaled.
 The apply functions are generated using $\mkApply$ as specified in Figure \ref{fig:defun-apply} where the $\mathit{fn}\ldots$ is a list of functions which may be applied.
 After the transformation the program is no longer in A-normal form since variables referencing top-level functions may have been transformed into records.
 However it does not pose a problem since the majority of work has already been done and the last step -- let-inlining does not require the program to be in ANF.
@@ -481,7 +485,7 @@ However it does not pose a problem since the majority of work has already been d
   $\bb{x}$ &= $ \begin{cases}
     \lstinline!{Prim$_x$}! & \mathrm{when}\,\mathit{primOp}(x)\\
     % x\text{is a reference to prim op}\\
-    \lstinline!{Top$_x$}!  & \mathrm{when}\,\mathit{topLevel}(x)\\
+    \lstinline!{Top$_x$}!  & \mathrm{when}\,\mathit{topLevel}(x) \wedge \defun(x)\\
     % x\text{is a reference to a top-level function which should be defunctionalized}\\
     x & \mathrm{otherwise}
   \end{cases} $\\
@@ -499,7 +503,8 @@ However it does not pose a problem since the majority of work has already been d
 
   $\bb{\lstinline!(!f^{l'}\;x\ldots\lstinline!)!^l}$
   &= $\begin{cases}
-    \lstinline!(apply$_l$ $f$ $\bb{x}\ldots$)! &\text{when }\mathit{allDefun}(l')\\
+    \lstinline!($f\;\bb{x}\ldots$)! &\text{when }\mathit{primOp}(f)\vee\mathit{topLevel}(f)\\
+    \lstinline!(apply$_l$ $f$ $\bb{x}\ldots$)! &\text{else when }\mathit{allDefun}(l')\\
     \lstinline!($f\;\bb{x}\ldots$)! &\text{when }\mathit{noneDefun}(l')
   \end{cases}$\\
 

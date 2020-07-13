@@ -32,7 +32,7 @@ We will only allow applications, match expressions and constructors with trivial
 Additionally we would like to consider some expressions trivial due to their interpretation (e.g., environment lookups) even though they are serious.
 In order to retain ability to build interesting programs, every function will accept an additional argument -- a continuation which specifies what should be done next.
 
-The interesting clauses of the algorithm for simple CPS translation of expressions in \IDL{} are presented in Figure \ref{fig:cps-translation}.
+The interesting clauses of an algorithm for simple CPS translation of expressions in \IDL{} are presented in Figure \ref{fig:cps-translation}.
 The meta variables are typeset with italics (e.g., \textit{k}).
 The pieces of syntax use typewriter font (e.g., \texttt{k'}).
 The function $ \llbracket e \rrbracket k $ transforms an expression $e$ to continuation-passing-style using expression $k$ as a continuation.

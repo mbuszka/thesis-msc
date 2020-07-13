@@ -59,7 +59,7 @@ In the remainder of this chapter I introduce the \textit{Interpreter Definition 
 In Chapter \ref{chapter:functional-correspondence}, I describe the functional correspondence and its constituents.
 In Chapter \ref{chapter:transformer}, I show the algorithmic characterization of the correspondence.
 In Chapter \ref{chapter:case-studies}, I showcase the performance of the tool on a selection of case studies.
-In Chapter \ref{chapter:conclusions}, I discuss related work, point at future avenues for improvement and conclude.
+In Chapter \ref{chapter:conclusions}, I point at future avenues for improvement and conclude.
 Appendix \ref{chapter:user-manual} contains user's manual for the semantic transformer. % and it's runtime env
 
 I assume that the reader is familiar with \LC{} and its semantics (both normal (call-by-name) and applicative (call-by-value) order reduction).
@@ -212,7 +212,7 @@ The machine has two classes of states: \lstinline!eval! and \lstinline!continue!
 The initial configuration is \lstinline!(eval term {Nil} {Halt})! -- i.e., eval with the term of interest and empty stacks.
 There are four transitions from \lstinline!eval! configuration.
 The first two search for the \lstinline!Thunk! corresponding to the variable (de Bruijn index) in the environment and then evaluate it with old stack but with restored environment.
-The third transition switches to \lstinline!continue! configuration with the closure is created by pairing current environment with abstraction's body.
+The third transition switches to \lstinline!continue! configuration with the closure created by pairing current environment with abstraction's body.
 The fourth transition pushes a \lstinline!Thunk! onto continuation stack and begins evaluation of function expression.
 In the \lstinline!continue! configuration the machine inspects the stack.
 If it is empty then the computed function \lstinline!fn! is the final answer which is returned.
