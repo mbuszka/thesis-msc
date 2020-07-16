@@ -1,11 +1,12 @@
 \englishabstract{%
-I transform a manual derivation technique known as the functional correspondence between evaluators and abstract machines into a robust algorithm.
+This thesis presents a robust algorithm for automatically deriving an abstract machine corresponding to a given interpreter.
 
-I begin by describing the classic formulation of the methodology consisting of two source-to-source human-aided transformations and characterize control-flow analysis as a basis for their algorithmization.
-I then define the meta-language \IDL{} and present the three main steps of the automatic procedure: transformation to administrative normal form, selective transformation to continuation-passing style and selective defunctionalization.
-I also derive a procedure for computing control-flow analysis of programs in \IDL{} using the abstracting abstract machines methodology.
+The transformation is based on a manual derivation technique known as the functional correspondence between evaluators and abstract machines which consists of two source code transformations: translation to continuation-passing style which uncovers the control flow of the interpreter  and defunctionalization which produces a first-order program.
+
+The algorithm begins with the translation to administrative normal form which eases program analysis and the subsequent steps of the transformation: selective translation to continuation-passing style and selective defunctionalization.
+Both transformations extend their classical formulations with the ability to transform only the desired parts of the program by utilizing the control-flow analysis which is computed by an abstract interpreter obtained using the abstracting abstract machines methodology.
 
 The thesis is accompanied by an implementation of the algorithm in the form of a command-line tool.
 It allows for automatic transformation of an interpreter embedded in a \textit{Racket} source file and gives fine-grained control over the resulting machine.
-I present a selection of case-studies which showcase the performance of the tool and the algorithm by deriving both known and novel abstract machines.
+A selection of case-studies is presented to showcase the performance of the tool and the algorithm by deriving both known and novel abstract machines.
 }

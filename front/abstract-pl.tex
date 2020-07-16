@@ -1,11 +1,12 @@
 \polishabstract{%
-W pracy pokazuję jak przekształcić ręczną metodę derywacji, znaną jako odpowiedniość funkcyjna pomiędzy ewaluatorami i maszynami abstrakcyjnymi, w uniwersalny algorytm.
+W pracy przedstawiony jest algorytm pozwalający na automatyczną derywację maszyny abstrakcyjnej odpowiadającej źródłowemu interpreterowi.
 
-Zaczynając od klasycznego sformułowania metodologii, składającego się z dwóch transformacji kodu źródłowego wymagających pracy człowieka, wskazuję na analizę przepływu sterowania jako podstawę do ich algorytmizacji.
-Następnie definiuję meta-język \IDL{} i przedstawiam trzy główne etapy automatycznej procedury: transformację do adminstracyjnej postaci normalnej, wybiórczą transformację do stylu przekazywania kontynuacji oraz wybiórczą defunkcjonalizację.
-Pokazuję także procedurę pozwalającą na obliczenie analizy przepływu sterowania dla programów w \IDL{}, którą otrzymałem stosując metodologię abstrahowania maszyn abstrakcyjnych.
+Transformacja oparta jest na ręcznej metodzie derywacji znanej jako odpowiedniość funkcyjna pomiędzy ewaluatorami i maszynami abstrakcyjnymi, która składa się z dwóch transformacji kodu źródłowego: przekształcenia do stylu przekazywania kontynuacji ujawniającego przepływ sterowania w interpreterze oraz defunkcjonalizacji, która pozwala na uzyskanie pierwszorzędowego programu.
+
+Algorytm rozpoczyna się translacją do administracyjnej postaci normalnej która ułatwia analizę programu oraz dalsze przekształcenia: wybiórczą transformację do stylu przekazywania kontynuacji oraz wybiórczą defunkcjonalizację.
+Obie transformacje są rozszerzeniem klasycznych sformułowań i umożliwiają przekształcanie wybranych części programu dzięki zastosowaniu analizy przepływu sterowania, która jest obliczana za pomocą abstrakcyjnego interpretera otrzymanego z wykorzystaniem metodologii abstrahowania maszyn abstrakcyjnych.
 
 Do pracy dołączona jest implementacja algorytmu w postaci programu używanego z wiersza poleceń.
 Pozwala ona na automatyczną transformację interpretera zanużonego w pliku źródłowym w języku \textit{Racket}, jednocześnie zapewniając precyzyjną kontrolę nad kształtem wynikowej maszyny.
-W pracy przedstawiam zbiór przykładowych interpreterów na których obrazuję działanie narzędzia i algorytmu poprzez derywację zarówno znanych jak i nowych maszyn abstrakcyjnych.
+W pracy przedstawiono zbiór przykładowych interpreterów na których zobrazowano działanie narzędzia i algorytmu poprzez derywację zarówno znanych jak i nowych maszyn abstrakcyjnych.
 }
