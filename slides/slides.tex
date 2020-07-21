@@ -1,0 +1,398 @@
+\documentclass{beamer}
+
+\mode<presentation>
+{
+  \usetheme{Boadilla}      % or try Darmstadt, Madrid, Warsaw, ...
+  \usecolortheme{default} % or try albatross, beaver, crane, ...
+  \usefonttheme{default}  % or try serif, structurebold, ...
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamertemplate{caption}[numbered]
+} 
+\usepackage[polish]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[T1]{fontenc}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{amsfonts}
+\usepackage{stmaryrd}
+
+
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[scale=0.8]{FiraMono} 
+
+\lstdefinelanguage{idl}{%
+  alsoletter={-?\#:},
+  otherkeywords={(,),\{,\},[,]},
+  morekeywords={def,fun,def-data,def-struct,match,let,error},
+  morekeywords=[2]{String,Integer,Any,Boolean},
+  morekeywords=[3]{(,),\{,\},[,]},
+  morekeywords=[4]{\#:bar,\#:apply,\#:atomic,\#:no-defun,\#:name,\#t, \#f, \#:foo},
+  sensitive=true,
+  morestring=[b]",
+  morecomment=[l]{;;}
+}
+
+\lstset{%
+  basicstyle=\ttfamily\color{black},
+  mathescape=true,
+  showstringspaces=false,
+  keywordstyle={\color{green!50!black}},
+  keywordstyle=[2]{\color{blue!50!black}}, 
+  keywordstyle=[3]{\color{gray}},
+  keywordstyle=[4]{\color{blue!80!black}},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{green!80!black},
+  identifierstyle=\color{black},
+  escapechar=@,
+  language=idl
+} 
+
+\newcommand{\Redex}{\texttt{PLT Redex}}
+\newcommand{\Racket}{\texttt{Racket}}
+\newcommand{\LC}{\(\lambda\)-calculus}
+
+\title[The Functional Correspondence Applied]{The Functional Correspondence Applied:\\ An Implementation of a Semantics Transformer}
+\author{Maciej Buszka}
+\institute[II UWr]{Instytut Informatyki UWr}
+\date{23.07.2020}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Outline}
+  \tableofcontents
+\end{frame}
+
+\section{Introduction}
+\begin{frame}{Problem statement}
+  \begin{itemize}
+    \item Abstract Machines
+    \pause
+    \begin{itemize}
+      \item Precisely describe operational properties of a program
+      \pause
+      \item May serve as an implementation basis
+      \pause
+      \item Hard to create from scratch
+    \end{itemize}
+    \item High-level semantics
+    \pause
+    \begin{itemize}
+      \item Denotational and big-step operational
+      \pause
+      \item Concise and abstract
+      \pause
+      \item May be understood intuitively
+    \end{itemize}
+    \item Obtaining an abstract machine corresponding to a given high-level semantics 
+    \begin{itemize}
+      \pause
+      \item Requires proof of correctness
+      \pause
+      \item Time consuming and non-trivial
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Goals}
+  \begin{itemize}
+    \item An algorithm deriving an abstract machine
+    \begin{itemize}
+      \item Takes an interpreter in a functional language
+      \item Produces an encoding of an abstract machine
+      \item Fully automatic
+    \end{itemize}
+    \item A practical tool which implements this algorithm
+    \begin{itemize}
+      \item Gives control over the shape of the result
+      \item Generates readable machines
+      \item Allows for testing the interpreters
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\section{The Functional Correspondence}
+\subsection{Introduction}
+
+\begin{frame}{The Functional Correspondence}
+  \begin{itemize}
+    \item A manual method of deriving abstract machines
+    \item Begin with an evaluator
+    \item Finish with an abstract machine
+    \item Based on two source-to-source transformations
+    \begin{itemize}
+      \item Translation to continuation-passing style (CPS)
+      \item Defunctionalization
+    \end{itemize}
+    \item Successfully applied to a multitude of diverse evaluators
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Running example: call-by-name \LC{}}
+\begin{lstlisting}
+(def eval (expr env)
+  (match expr
+    ([Integer n] ((env n)))
+    ({App f x}
+      ((eval f env) (fun () (eval x env))))
+    ({Abs body}
+      (fun (x) (eval body (cons x env))))))
+\end{lstlisting}
+\end{frame}
+
+
+\subsection{CPS}
+
+\begin{frame}{Translation to CPS}
+  \begin{itemize}
+    \item Goal: expose control-flow of an interpreter
+    \item Classify functions into trivial and serious ones
+    \begin{itemize}
+      \item Serious functions may only be called in tail position
+      \item Trivial functions may be called anywhere
+    \end{itemize}
+    \item Pass additional argument -- the continuation
+    \begin{itemize}
+      \item Specifies what should be done after the function finishes
+      \item Allows to express interesting programs while retaining tail-call property
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Interpreter in CPS}
+  \begin{lstlisting}
+(def eval (expr env cont)
+  (match expr
+    ([Integer n] ((env n) cont))
+    ({App f x}
+      (eval f env
+        (fun (var3)
+          (var3 (fun (cont1) (eval x env cont1)) cont))))
+    ({Abs body}
+      (cont (fun (x cont2) (eval body (cons x env) cont2))))))
+  \end{lstlisting}
+\end{frame}
+
+\subsection{Defunctionalization}
+
+\begin{frame}{Defunctionalization}
+  \begin{itemize}
+    \item Goal: produce first-order program
+    \item For each function space
+    \begin{itemize}
+      \item Transform anonymous function definitions into records holding the free variables
+      \item Generate top-level function which matches the records and evaluates the bodies
+      \item Transform applications of functions in the space into a call to the top-level function
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Resulting Machine}
+  \begin{lstlisting}
+(def eval (expr env cont)
+  (match expr
+    ([Integer n] (force (env n) cont))
+    ({App f x} (eval f env {App1 cont env x}))
+    ({Abs body} (continue cont {Clo body env}))))
+
+(def force (fn cont1)
+  (match fn ({Thunk env x} (eval x env cont1))))
+
+(def apply (fn1 x cont2)
+  (match fn1 ({Clo body env} (eval body (cons x env) cont2))))
+
+(def continue (fn2 var3)
+  (match fn2
+    ({App1 cont env x} (apply var3 {Thunk env x} cont))
+    ({Halt} var3)))
+  \end{lstlisting}
+\end{frame}
+
+\section{The Semantics Transformer}
+\begin{frame}{Practical Considerations}
+  \begin{itemize}
+    \item Interpreters embedded in \textit{Racket} source files
+    \begin{itemize}
+      \item Natural, functional meta-language with pattern matching
+      \item May be executed in REPL, loaded from other modules etc.
+      \item Can be tested using \textit{Racket}'s framework
+      \item Tests may use full power of the language and macros
+    \end{itemize}
+    \item Machine generated using only the source file
+    \begin{itemize}
+      \item No need to write additional configuration, flags, etc.
+      \item Shape of the result may be modified by annotating source program
+    \end{itemize}
+    \item The tool can pretty print intermediate results
+    \item Names are generated mostly deterministically
+  \end{itemize}
+\end{frame}
+
+\subsection{Control-flow Analysis}
+
+\begin{frame}{Control-flow Analysis}
+  \begin{itemize}
+    \item For each expression in a program, find the over-approximation of the set of functions it may evaluate to
+    \item Exactly matches requirements of defunctionalization
+    \item Textbook approaches
+    \begin{itemize}
+      \item Constraint systems
+      \item Annotated type systems
+      \item Subjectively hard to adapt to my requirements
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Abstracting Abstract Machines}
+  \begin{itemize}
+    \item Derive an analysis from abstract machine
+    \begin{itemize}
+      \item Mechanical, principled process
+      \item Easy to adapt various language features
+    \end{itemize}
+    \item Results of analysis fit the functional correspondence well
+    \item Reasonable running time on small (100 lines) interpreters even with very naive implementation
+    \item The analysis specified in the thesis' algorithm works on terms in A-normal form
+  \end{itemize}
+\end{frame}
+
+
+\subsection{A-normal Form}
+
+\begin{frame}{Translation to A-normal Form}
+  \begin{itemize}
+    \item Intermediate representation of programs
+    \item Every expression has only variables as subterms
+    \item Works by let-binding intermediate results
+    \item Simplifies analysis and subsequent transformations
+  \end{itemize}
+\end{frame}
+
+
+\subsection{Selective Translation to CPS}
+
+\begin{frame}{Selective Translation to CPS}
+  \begin{itemize}
+    \item Extension of standard CPS translation
+    \begin{itemize}
+      \item Allow to specify which functions should be left in direct style
+      \item Functions in direct style may call CPS ones and vice versa
+    \end{itemize}
+    \item Uses control-flow analysis to guide transformation of applications
+    \item Beneficial in practice -- machine is not cluttered with control flow of helper functions
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{CPS Annotations}
+  \begin{lstlisting}
+(def cons #:atomic (val env)
+  (fun #:atomic (n)
+    (match n
+      (0 val)
+      (_ (env (- n 1))))))
+
+(eval term (fun #:atomic (n) (error "empty env")))
+  \end{lstlisting}
+\end{frame}
+
+
+\subsection{Selective Defunctionalization}
+
+\begin{frame}{Selective Defunctionalization}
+  \begin{itemize}
+    \item Extends defunctionalization with option to leave selected function spaces untouched
+    \item Uses control-flow analysis
+    \begin{itemize}
+      \item Generation of apply functions
+      \item Guide transformation of applications
+      \item Pass references to top-level functions as records where necessary
+    \end{itemize}
+    \item Beneficial in practice -- pieces of machine may be left abstract
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Defunctionalization Annotations}
+  \begin{lstlisting}
+(def cons #:atomic (val env)
+  (fun #:atomic #:no-defun (n)
+    (match n
+      (0 val)
+      (_ (env (- n 1))))))
+
+(eval term (fun #:atomic #:no-defun (n) (error "empty env")))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}{Demo}
+  \centering
+  An evaluator for call-by-name \LC{}
+\end{frame}
+
+\section{Conclusion}
+\begin{frame}{Case studies}
+  \begin{center}
+  \scriptsize
+  \begin{tabular}{c|c|c|c}
+  Language & Interpreter style & Lang. Features & Result \\ 
+  \Xhline{2\arrayrulewidth}
+  \multirow{13}{*}{\makecell{call-by-value \\ \LC{}}} & denotational & $\cdot$ & CEK machine \\
+  \cline{2-4}
+  & denotational & integers with add & CEK with add \\
+  \cline{2-4}
+  & \makecell{denotational, \\ recursion via \\ environment} & \makecell{integers, recursive \\ let-bindings} & \makecell{similar to Reynold's  \\ first-order interpreter}\\
+  \cline{2-4}
+  & \makecell{denotational \\ with conts.} & shift and reset & two layers of conts.\\
+  \cline{2-4}
+  & \makecell{denotational, \\ monadic} & \multirow{3}{*}{\makecell{exceptions \\ with handlers}} & \makecell{explicit \\ stack unwinding}\\
+  \cline{2-2}\cline{4-4}
+  & \makecell{denotational, \\ CPS} & & \makecell{pointer to\\ exception handler}\\
+  \cline{2-4}
+  & \makecell{normalization \\ by evaluation} & $\cdot$ & strong CEK machine \\
+  \hline
+  \makecell{call-by-name \\ \LC{}} & big-step & $\cdot$ & Krivine machine \\
+  \hline
+  \makecell{call-by-need \\ \LC{}} & \makecell{big-step \\ (state passing)} & memoization & lazy Krivine machine \\
+  \hline
+  \makecell{simple \\ imperative} & \makecell{big-step \\ (state passing)} & \makecell{conditionals, \\ while, assignment} & $\cdot$\\
+  \hline
+  micro-Prolog & CPS & \makecell{backtracking, \\ cut operator} & logic engine\\
+  \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Conclusion}
+  \begin{itemize}
+    \item Algorithm
+    \begin{itemize}
+      \item Fully automatic transformation
+      \item Works with interpreters expressed in a higher-order language
+      \item Allows for fine-grained control over the resulting machine
+    \end{itemize}
+    \item Implementation
+    \begin{itemize}
+      \item Interpreters embedded in \textit{Racket} source files
+      \item Modification of transformation via annotations
+      \item Tested on a selection of interpreters
+    \end{itemize}
+    \item Further work
+    \begin{itemize}
+      \item Formalization in \textit{Coq}
+      \item Transformation of other encodings of semantic formats
+      \item Different backends: \textit{C}, \LaTeX
+      \item Nondeterministic languages
+    \end{itemize}
+  \end{itemize}  
+\end{frame}
+
+\end{document}
