@@ -54,8 +54,8 @@
 \newcommand{\LC}{\(\lambda\)-calculus}
 
 \title[The Functional Correspondence Applied]{The Functional Correspondence Applied:\\ An Implementation of a Semantics Transformer}
-\author{Maciej Buszka}
-\institute[II UWr]{Instytut Informatyki UWr}
+\author[Maciej Buszka]{Maciej Buszka}
+\institute[II UWr]{Instytut Informatyki UWr\\{\vspace{\baselineskip}Supervised by: dr. hab. Dariusz Biernacki}}
 \date{23.07.2020}
 
 \begin{document}
@@ -72,29 +72,30 @@
 \begin{frame}{Problem statement}
   \begin{itemize}
     \item Abstract Machines
-    \pause
     \begin{itemize}
       \item Precisely describe operational properties of a program
-      \pause
+      % \pause
       \item May serve as an implementation basis
-      \pause
+      % \pause
       \item Hard to create from scratch
     \end{itemize}
-    \item High-level semantics
     \pause
+    \item High-level semantics
+    % \pause
     \begin{itemize}
       \item Denotational and big-step operational
-      \pause
+      % \pause
       \item Concise and abstract
-      \pause
+      % \pause
       \item May be understood intuitively
     \end{itemize}
-    \item Obtaining an abstract machine corresponding to a given high-level semantics 
+    \pause
+    \item Deriving abstract machines
     \begin{itemize}
-      \pause
+      % \pause
       \item Requires proof of correctness
-      \pause
-      \item Time consuming and non-trivial
+      % \pause
+      \item Mechanized by the functional correspondence
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -107,6 +108,7 @@
       \item Produces an encoding of an abstract machine
       \item Fully automatic
     \end{itemize}
+    \pause
     \item A practical tool which implements this algorithm
     \begin{itemize}
       \item Gives control over the shape of the result
@@ -117,18 +119,19 @@
 \end{frame}
 
 \section{The Functional Correspondence}
-\subsection{Introduction}
 
 \begin{frame}{The Functional Correspondence}
   \begin{itemize}
     \item A manual method of deriving abstract machines
-    \item Begin with an evaluator
-    \item Finish with an abstract machine
+    \item Starts with an evaluator
+    \item Finishes with an encoding of an abstract machine
+    \pause
     \item Based on two source-to-source transformations
     \begin{itemize}
       \item Translation to continuation-passing style (CPS)
       \item Defunctionalization
     \end{itemize}
+    \pause
     \item Successfully applied to a multitude of diverse evaluators
   \end{itemize}
 \end{frame}
@@ -136,6 +139,11 @@
 \begin{frame}[fragile]
 \frametitle{Running example: call-by-name \LC{}}
 \begin{lstlisting}
+(def-data Term
+  Integer         ;; de Bruijn index
+  {App Term Term} ;; application
+  {Abs Term})     ;; abstraction
+
 (def eval (expr env)
   (match expr
     ([Integer n] ((env n)))
@@ -147,7 +155,7 @@
 \end{frame}
 
 
-\subsection{CPS}
+\subsection{Translation to CPS}
 
 \begin{frame}{Translation to CPS}
   \begin{itemize}
@@ -157,6 +165,7 @@
       \item Serious functions may only be called in tail position
       \item Trivial functions may be called anywhere
     \end{itemize}
+    \pause
     \item Pass additional argument -- the continuation
     \begin{itemize}
       \item Specifies what should be done after the function finishes
@@ -217,24 +226,28 @@
 \end{frame}
 
 \section{The Semantics Transformer}
-\begin{frame}{Practical Considerations}
-  \begin{itemize}
-    \item Interpreters embedded in \textit{Racket} source files
-    \begin{itemize}
-      \item Natural, functional meta-language with pattern matching
-      \item May be executed in REPL, loaded from other modules etc.
-      \item Can be tested using \textit{Racket}'s framework
-      \item Tests may use full power of the language and macros
-    \end{itemize}
-    \item Machine generated using only the source file
-    \begin{itemize}
-      \item No need to write additional configuration, flags, etc.
-      \item Shape of the result may be modified by annotating source program
-    \end{itemize}
-    \item The tool can pretty print intermediate results
-    \item Names are generated mostly deterministically
-  \end{itemize}
-\end{frame}
+% \begin{frame}
+%   \centering
+%   \huge The Semantics Transformer
+% \end{frame}
+% \begin{frame}{Practical Considerations}
+%   \begin{itemize}
+%     \item Interpreters embedded in \textit{Racket} source files
+%     \begin{itemize}
+%       \item Natural, functional meta-language with pattern matching
+%       \item May be executed in REPL, loaded from other modules etc.
+%       \item Can be tested using \textit{Racket}'s framework
+%       \item Tests may use full power of the language and macros
+%     \end{itemize}
+%     \item Machine generated using only the source file
+%     \begin{itemize}
+%       \item No need to write additional configuration, flags, etc.
+%       \item Shape of the result may be modified by annotating source program
+%     \end{itemize}
+%     \item The tool can pretty print intermediate results
+%     \item Names are generated mostly deterministically
+%   \end{itemize}
+% \end{frame}
 
 \subsection{Control-flow Analysis}
 
@@ -242,11 +255,12 @@
   \begin{itemize}
     \item For each expression in a program, find the over-approximation of the set of functions it may evaluate to
     \item Exactly matches requirements of defunctionalization
+    \pause
     \item Textbook approaches
     \begin{itemize}
       \item Constraint systems
       \item Annotated type systems
-      \item Subjectively hard to adapt to my requirements
+      \item Subjectively hard to adapt to the meta-language
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -260,21 +274,20 @@
     \end{itemize}
     \item Results of analysis fit the functional correspondence well
     \item Reasonable running time on small (100 lines) interpreters even with very naive implementation
-    \item The analysis specified in the thesis' algorithm works on terms in A-normal form
   \end{itemize}
 \end{frame}
 
 
-\subsection{A-normal Form}
+% \subsection{A-normal Form}
 
-\begin{frame}{Translation to A-normal Form}
-  \begin{itemize}
-    \item Intermediate representation of programs
-    \item Every expression has only variables as subterms
-    \item Works by let-binding intermediate results
-    \item Simplifies analysis and subsequent transformations
-  \end{itemize}
-\end{frame}
+% \begin{frame}{Translation to A-normal Form}
+%   \begin{itemize}
+%     \item Intermediate representation of programs
+%     \item Every expression has only variables as subterms
+%     \item Works by let-binding intermediate results
+%     \item Simplifies analysis and subsequent transformations
+%   \end{itemize}
+% \end{frame}
 
 
 \subsection{Selective Translation to CPS}
@@ -333,10 +346,10 @@
   \end{lstlisting}
 \end{frame}
 
-\begin{frame}{Demo}
-  \centering
-  An evaluator for call-by-name \LC{}
-\end{frame}
+% \begin{frame}{Demo}
+%   \centering
+%   An evaluator for call-by-name \LC{}
+% \end{frame}
 
 \section{Conclusion}
 \begin{frame}{Case studies}
@@ -379,12 +392,14 @@
       \item Works with interpreters expressed in a higher-order language
       \item Allows for fine-grained control over the resulting machine
     \end{itemize}
+    \pause
     \item Implementation
     \begin{itemize}
       \item Interpreters embedded in \textit{Racket} source files
       \item Modification of transformation via annotations
       \item Tested on a selection of interpreters
     \end{itemize}
+    \pause
     \item Further work
     \begin{itemize}
       \item Formalization in \textit{Coq}
@@ -393,6 +408,43 @@
       \item Nondeterministic languages
     \end{itemize}
   \end{itemize}  
+\end{frame}
+
+\begin{frame}
+  \centering
+  \huge Thank You
+\end{frame}
+
+\begin{frame}{Case studies}
+  \begin{center}
+  \scriptsize
+  \begin{tabular}{c|c|c|c}
+  Language & Interpreter style & Lang. Features & Result \\ 
+  \Xhline{2\arrayrulewidth}
+  \multirow{13}{*}{\makecell{call-by-value \\ \LC{}}} & denotational & $\cdot$ & CEK machine \\
+  \cline{2-4}
+  & denotational & integers with add & CEK with add \\
+  \cline{2-4}
+  & \makecell{denotational, \\ recursion via \\ environment} & \makecell{integers, recursive \\ let-bindings} & \makecell{similar to Reynold's  \\ first-order interpreter}\\
+  \cline{2-4}
+  & \makecell{denotational \\ with conts.} & shift and reset & two layers of conts.\\
+  \cline{2-4}
+  & \makecell{denotational, \\ monadic} & \multirow{3}{*}{\makecell{exceptions \\ with handlers}} & \makecell{explicit \\ stack unwinding}\\
+  \cline{2-2}\cline{4-4}
+  & \makecell{denotational, \\ CPS} & & \makecell{pointer to\\ exception handler}\\
+  \cline{2-4}
+  & \makecell{normalization \\ by evaluation} & $\cdot$ & strong CEK machine \\
+  \hline
+  \makecell{call-by-name \\ \LC{}} & big-step & $\cdot$ & Krivine machine \\
+  \hline
+  \makecell{call-by-need \\ \LC{}} & \makecell{big-step \\ (state passing)} & memoization & lazy Krivine machine \\
+  \hline
+  \makecell{simple \\ imperative} & \makecell{big-step \\ (state passing)} & \makecell{conditionals, \\ while, assignment} & $\cdot$\\
+  \hline
+  micro-Prolog & CPS & \makecell{backtracking, \\ cut operator} & logic engine\\
+  \hline
+  \end{tabular}
+  \end{center}
 \end{frame}
 
 \end{document}
