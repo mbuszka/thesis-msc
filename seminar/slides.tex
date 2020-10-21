@@ -1,0 +1,810 @@
+\documentclass{beamer}
+
+\mode<presentation>
+{
+  \usetheme{Boadilla}      % or try Darmstadt, Madrid, Warsaw, ...
+  \usecolortheme{default} % or try albatross, beaver, crane, ...
+  \usefonttheme{default}  % or try serif, structurebold, ...
+  \setbeamertemplate{navigation symbols}{}
+  \setbeamertemplate{caption}[numbered]
+} 
+\usepackage[polish]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage[T1]{fontenc}
+\usepackage{multirow}
+\usepackage{makecell}
+\usepackage{amsfonts}
+\usepackage{stmaryrd}
+
+
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[scale=0.8]{FiraMono} 
+
+\lstdefinelanguage{idl}{%
+  alsoletter={-?\#:},
+  otherkeywords={(,),\{,\},[,]},
+  morekeywords={def,fun,def-data,def-struct,match,let,error},
+  morekeywords=[2]{String,Integer,Any,Boolean},
+  morekeywords=[3]{(,),\{,\},[,]},
+  morekeywords=[4]{\#:bar,\#:apply,\#:atomic,\#:no-defun,\#:name,\#t, \#f, \#:foo},
+  sensitive=true,
+  morestring=[b]",
+  morecomment=[l]{;;}
+}
+
+\lstset{%
+  basicstyle=\ttfamily\color{black},
+  mathescape=true,
+  showstringspaces=false,
+  keywordstyle={\color{green!50!black}},
+  keywordstyle=[2]{\color{blue!50!black}}, 
+  keywordstyle=[3]{\color{gray}},
+  keywordstyle=[4]{\color{blue!80!black}},
+  commentstyle=\color{gray}\itshape,
+  stringstyle=\color{green!80!black},
+  identifierstyle=\color{black},
+  escapechar=@,
+  language=idl
+}
+
+\expandafter\patchcmd\csname \string\lstinline\endcsname{%
+  \leavevmode
+  \bgroup
+}{%
+  \leavevmode
+  \ifmmode\hbox\fi
+  \bgroup
+}{}{%
+  \typeout{Patching of \string\lstinline\space failed!}%
+}
+
+\newcommand{\Redex}{\texttt{PLT Redex}}
+\newcommand{\Racket}{\texttt{Racket}}
+\newcommand{\LC}{\(\lambda\)-calculus}
+
+\newcommand{\IDL}{\textit{IDL}}
+\newcommand{\bb}[1]{\left\llbracket #1 \right\rrbracket}
+\newcommand{\anf}[2]{\bb{#1}#2}
+\newcommand{\atomic}[1]{[ #1 ]_{a}}
+\newcommand{\anfSeq}[2]{\bb{#1}_{s} #2}
+\newcommand{\e}[1]{\lstinline{#1}}
+\newcommand{\tuple}[1]{\left< #1 \right>}
+\newcommand{\VA}[0]{\mathit{VAddr}}
+\newcommand{\KA}[0]{\mathit{KAddr}}
+\newcommand{\VS}[0]{\mathit{VStore}}
+\newcommand{\KS}[0]{\mathit{KStore}}
+
+\newcommand{\cps}[2]{\bb{#1}_c #2}
+\newcommand{\dir}[1]{\bb{#1}_d}
+\newcommand{\trivial}{\mathit{trivial}}
+\newcommand{\atom}{\mathit{atomic}}
+\newcommand{\allAtomic}{\mathit{allAtomic}}
+\newcommand{\noneAtomic}{\mathit{noneAtomic}}
+\newcommand{\defun}{\mathit{defun}}
+\newcommand{\mkBranch}{\mathit{mkBranch}}
+\newcommand{\mkApply}{\mathit{mkApply}}
+\newcommand{\semt}{\lstinline!semt!}
+
+
+\title[The Functional Correspondence Applied]{The Functional Correspondence Applied:\\ An Implementation of a Semantics Transformer}
+\author[Maciej Buszka]{Maciej Buszka}
+\institute[II UWr]{Instytut Informatyki UWr}
+\date{22.10.2020}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% \begin{frame}{Outline}
+%   \tableofcontents
+% \end{frame}
+
+
+\section{Introduction}
+\begin{frame}{The Functional Correspondence}
+  \begin{itemize}
+    \item A method for deriving abstract machines\pause
+    \item Takes a definitional interpreter
+    \item Produces an encoding of abstract machine\pause
+    \item Introduced by Danvy et. al. in \textit{A functional correspondence between evaluators and abstract machines}
+    \pause
+    \item Based on two source-to-source transformations
+    \begin{itemize}
+      \item Translation to continuation-passing style (CPS)
+      \item Defunctionalization
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Meta-language by Example: CBV \LC{}}
+  \begin{lstlisting}
+(def-data Term
+  String            ;; variable
+  {Abs String Term} ;; lambda abstraction
+  {App Term Term})  ;; application
+
+;; Environment is encoded as a partial function
+
+(def extend (env x v) ... ) ;; extends env at x with value v
+
+(def eval (env term)
+  (match term
+    ([String x]   (env x))
+    ({Abs x body} (fun (v) (eval (extend env x v) body)))
+    ({App fn arg} ((eval env fn) (eval env arg)))))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}
+  \begin{center}
+    \LARGE{Transformation Steps We Aim For}\\
+    \tiny{(Also a reminder of how functional correspondence works)}
+  \end{center}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{After CPS Translation}
+  \begin{lstlisting}
+(def eval (env term cont)
+  (match term
+    ([String x] (cont (env x)))
+    ({Abs x body}
+      (cont (fun (v cont)
+        (eval (extend env x v) body cont))))
+    ({App fn arg}
+      (eval env fn (fun (fn)
+        (eval env arg (fun (arg) (fn arg cont))))))))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{After Defunctionalization}
+  \begin{lstlisting}
+(def eval (env term cont)
+  (match term
+    ([String x]   (continue cont (env x)))
+    ({Abs x body} (continue cont {Fun body env x}))
+    ({App fn arg} (eval env fn {App1 arg cont env}))))
+
+(def apply (fn v cont)
+  (match fn ({Fun body env x}
+    (eval (extend env x v) body cont))))
+
+(def continue (cont val)
+  (match cont
+    ({App1 arg cont env} (eval env arg {App2 cont val}))
+    ({App2 cont fn}      (apply fn val cont))
+    ({Halt}              val)))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}{The Result}
+  \begin{itemize}
+    \item An abstract machine encoded as mutually tail-recursive functions
+    \item Uses abstract environment (encoded as a function)
+    \begin{itemize}
+      \item \lstinline{extend} is still higer-order
+      \item \lstinline{extend} and functions representing environment remain in direct style
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Desired Features}
+  \begin{itemize}
+    \item Metalanguage expressivity
+    \begin{itemize}
+      \item Mutually recursive, anonymous and higher-order functions
+      \item Records and pattern matching
+      \item Dynamic (strong) typing
+    \end{itemize}\pause
+    \item Automation
+    \begin{itemize}
+      \item Function space detection
+      \item CPS and defunctionalization
+      \item Sensible name generation
+    \end{itemize}\pause
+    \item User's control over transformation
+    \begin{itemize}
+      \item Naming of records for defunctionalized lambdas, apply functions
+      \item Disabling defunctionalization and/or cps transformation of chosen functions
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Why Control is Needed}
+  \begin{lstlisting}
+(def extend (env y v cont1) (continue cont1 {Ext env v y}))
+(def lookup (fn1 x cont2) ... (continue2 ...))
+
+(def eval (env term cont3)
+  (match term
+    ([String x] (lookup env x cont3))
+    ({Abs x body} (continue2 cont3 {Fun body env x}))
+    ({App fn arg} (eval env fn {App1 arg cont3 env}))))
+
+(def continue2 (fn4 var3)
+  (match fn4
+    ({App2 cont3 var2} (apply var2 var3 cont3))
+    ({App1 arg cont3 env} (eval env arg {App2 cont3 var3}))
+    ({Halt } var3)))
+
+(def apply (fn2 v cont4) ... (extend ...))
+
+(def continue (fn3 var1) ... (eval var1 body cont4))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}
+  \begin{center}
+    \LARGE{Automating the Functional Correspondence}\\
+    \tiny{(A particular approach)}
+  \end{center}
+\end{frame}
+
+\begin{frame}{In a Nutshell}
+  \begin{itemize}
+    \item Transformation to ANF \pause
+    \item Control flow analysis \pause
+    \item Transformation to CPS \pause
+    \item Control flow analysis \pause
+    \item Defunctionalization \pause
+    \item Inlining administrative let-bindings
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Transformation to ANF}
+  \begin{itemize}
+    \item Assumes left-to-right call-by-value semantics
+    \item Let-bind every intermediate result \pause
+    \item Eases program analysis and further transformations \pause
+    \item Preserves tail calls \pause
+  \end{itemize}\pause
+  \vspace{1\baselineskip}
+  \begin{beamerboxesrounded}{Abstract syntax of the meta-language}
+  \begin{center}
+    \begingroup
+    \setlength{\tabcolsep}{2pt}
+    \def\arraystretch{1.3}
+    \begin{tabular}{rrl}
+      $x, y, z \in Var$ && $r\in StructName$\\
+      $s \in String$ && $b \in Int \cup Boolean \cup String$\\
+      $Tp \ni \mathit{tp} $ &::=& \lstinline!String! | \lstinline!Integer! | \lstinline!Boolean!\\
+      $Pattern \ni p $ &::=& $x$ | $b$ | \lstinline!_! | \lstinline!{$r$ $p\ldots$}! |  \lstinline![$\mathit{tp}$ $x$]!\\
+      $Term \ni t$ &::=& $x$ | $b$
+                  | \lstinline!(fun ($x\ldots$) $t$)!
+                  | \lstinline!($t$ $t\ldots$)!
+                  | \lstinline!{$r$ $t\ldots$}!\\
+                  &|& \lstinline!(let $p$ $t$ $t$)!
+                  | \lstinline!(match $t$ ($p$ $t$)$\ldots$)!
+                  | \lstinline!(error $s$)!
+    \end{tabular}
+    \endgroup
+    \end{center}
+  \end{beamerboxesrounded}
+\end{frame}
+
+\begin{frame}[fragile]{Transformation to ANF}
+  \begin{beamerboxesrounded}{Abstract syntax in ANF}
+    \begin{center}
+      \begingroup
+      \setlength{\tabcolsep}{2pt}
+      \begin{tabular}{rll}
+        $Com \ni c $ && ::= $x$ | $b$
+        | \lstinline!(fun ($x\ldots$) $e$)!
+        | \lstinline!($x$ $x\ldots$)!\\
+        &&| \lstinline!{$r$ $x\ldots$}!
+        | \lstinline!(match $x$ ($p$ $e$)$\ldots$)!\\
+        $Anf \ni e $ && ::= $c$ 
+        | \lstinline!(let $p$ $c$ $e$)!
+        | \lstinline!(error $s$)!
+      \end{tabular}\vspace{\baselineskip}
+      \endgroup
+      \end{center}
+  \end{beamerboxesrounded}
+  \vspace{\baselineskip}
+  \begin{beamerboxesrounded}{ANF translation}
+    \begin{center}
+      \begingroup
+      \setlength{\tabcolsep}{2pt}
+      \begin{tabular}{rll}
+        $\bb{\cdot}$ &$\cdot$ &: $Term \times (Com \rightarrow Anf) \rightarrow Anf$\\
+        $\bb{a}$ &$k$ &$= k\,a$\\
+        
+        $\bb{\lstinline!(fun ($x\ldots$)\ $t$)!}$ &$k$
+        & $= k\, \lstinline!(fun ($x\ldots$) $\anf{t}{id}$)!$\\
+        
+        $\bb{\lstinline!($t_f \; t_{arg}\ldots$)!}$ &$k$ 
+        &$= \anf{t_f}{\atomic{\lambda x_f . \anfSeq{t_{arg}\ldots}{\lambda (x_{arg}\ldots) . k \,\lstinline!($x_f\;x_{arg}\ldots$)!}}}$\\
+      
+        $\bb{\lstinline!(let\ $x\;t_1\;t_2$)!}$ & $k$
+        &$= \anf{t_1}{\lambda c_1 . \lstinline!(let\ $x\;c_1\;\anf{t_2}{k}$)!}$\\
+      
+        $\bb{\lstinline!\{$r \; t\ldots$\}!}$ &$k$ 
+        &$= \anfSeq{t\ldots}{\lambda (x\ldots) . k \,\lstinline!\{$r\;x\ldots$\}!}$\\
+      
+        $\bb{\lstinline!(match\ $t\;$($p \;t_b$))!}$ & $k$
+        &$= \anf{t}{\atomic{\lambda x . k\,\lstinline!(match\ $x\;$($p\;\anf{t_b}{id}$)!}}$\\
+      
+        $\bb{\lstinline!(error\ $s$)!}$ & \_ & $= $ \lstinline!(error $s$)!
+      \end{tabular}
+      \endgroup
+      \end{center}
+  \end{beamerboxesrounded}
+\end{frame}
+
+\begin{frame}[fragile]{Transformation to ANF}
+  \begin{beamerboxesrounded}{Extending atomic continuation}
+    \begin{center}
+      \begingroup
+      \setlength{\tabcolsep}{2pt}
+      \begin{tabular}{rll}
+        $[\cdot]_a$ & $\cdot$ & : $(Var \rightarrow Anf) \rightarrow Com \rightarrow Anf$\\
+        $[k]_a$ & $x$ & $= k\,x$\\
+        $[k]_a$ & $c$ & $= $ \lstinline!(let $x$ $c$ $(k\,x)$)!
+      \end{tabular}
+      \endgroup
+      \end{center}
+  \end{beamerboxesrounded}
+  \vspace{\baselineskip}
+  \begin{beamerboxesrounded}{Sequencing multiple terms}
+    \begin{center}
+      \begingroup
+      \setlength{\tabcolsep}{2pt}
+      \begin{tabular}{rll}
+        $\bb{\cdot}_s$ & $\cdot$ &: $Term^* \times (Var^* \rightarrow Anf) \rightarrow Anf$\\
+        $\bb{t\ldots}_s$ & $k$ & $= \bb{t\ldots}_s^{\epsilon}$\\
+        \\
+        $\bb{\epsilon}_s^{x\ldots}$ & $k$ & $= k\,(x\ldots)$\\
+        $\bb{t\,t_r\ldots}_s^{x_{acc}\ldots}$ & $k$ & 
+        $= \anf{t}{\atomic{\lambda x . \bb{t_r\ldots}_s^{x_{acc}\ldots x}}}$
+      \end{tabular}
+      \endgroup
+      \end{center}
+  \end{beamerboxesrounded}
+\end{frame}
+
+\begin{frame}[fragile]{After ANF Transformation}
+  \begin{lstlisting}
+(def eval (env term)
+  (match term
+    ([String x] (env x))
+    ({Abs x body}
+      (fun (v)
+        (let var1 (extend env x v))
+        (eval var1 body)))
+    ({App fn arg}
+      (let var2 (eval env fn))
+      (let var3 (eval env arg))
+      (var2 var3))))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}{Control Flow Analysis}
+  \begin{itemize}
+    \item For each expression in a program, find the over-approximation of~the~set of functions it may evaluate to
+    \item Detects function spaces for defunctionalization
+    \item Enables selective cps translation
+    \pause
+    \item Textbook approaches:
+    \begin{itemize}
+      \item Constraint systems
+      \item Annotated type systems
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Abstracting Abstract Machines}
+  \begin{itemize}
+    \item Begin with a CESK* machine extended with patern matching\\
+      (Control Environment Store Kontinuation pointer)\pause
+    \item Because the program is in ANF:
+    \begin{itemize}
+      \item There are only two types of continuations
+      \item Every proper subexpression will allocate a value in the store
+    \end{itemize}\pause
+    \item Provide finite approximations for base types
+    \item Let the store map to sets of value approximations\pause
+    \item Compute the set of configurations reachable from the initial one\pause
+    \item Now for every variable in function position the store contains a set of values to which it may evaluate.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{AAM -- Performance Considerations}
+  \begin{itemize}
+    \item Use a single shared store (corresponds to widening)\pause
+    \item Trim environment in closures and continuations\pause
+    \item Sufficiently fast even with naive fixed-point iteration
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Selective Translation to CPS}
+  \begin{itemize}
+    \item Allows the user to specify which functions should be left in direct style
+    \item Functions in direct style may call CPS ones and vice versa \pause
+    \item Quite simple since the program is already in ANF \pause
+    \item Designed not to duplicate code
+    \item Produces a program in ANF
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{CPS Annotations}
+  \begin{lstlisting}
+(def init #:atomic (x) (error "empty environment"))
+
+(def extend #:atomic (env y v)
+  (fun #:atomic (x) (match (eq? x y)
+    (#t v)
+    (#f (env x)))))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Selective Translation to CPS}
+  \begin{beamerboxesrounded}{Translation to CPS}
+    \centering
+    \small
+  \begin{tabular}{rl}
+    $\cps{x}{k}$ &= \lstinline!($k$ $x$)!\\
+    
+    $\cps{b}{k}$ &= \lstinline!(let $x$ $b$ ($k$ $x$))!\\
+    
+    $\cps{\lstinline!\{$r\;x\ldots$\}!}{k}$
+    &= \lstinline!(let $y$ {$r\;x\ldots$} ($k$ $y$))!\\
+  
+    $\cps{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}{k}$
+    &= \lstinline!(let $y$ (fun ($x\ldots$) $\dir{e}$) ($k$ $y$))!\\
+  
+    $\cps{\lstinline!(fun ($x\ldots$)\ $e$)!}{k}$
+    &= \lstinline!(let $y$ (fun ($x\ldots k'$) $\cps{e}{k'}$) ($k$ $y$))!\\
+  
+    $\cps{\lstinline!($f^l\;x\ldots$)!}{k}$
+    &= $ \begin{cases}
+      \lstinline!($f$ $x\ldots$ $k$)! \\\quad\mathrm{when}\,\noneAtomic(l)\\
+      \lstinline!(let $y$ ($f$ $x\ldots$) ($k$ $y$))! \\\quad\mathrm{when}\,\allAtomic(l)\\
+    \end{cases} $\\
+  
+    $\cps{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}{k}$
+    &= \lstinline!(match $x$ ($p$ $\cps{e}{k}$)$\ldots$)!\\
+  
+    $\cps{\lstinline!(let$\;x\;c\;e$)!}{k} $
+    &= $ \begin{cases}
+      \lstinline!(let $x$ $\dir{c}$ $\cps{e}{k}$)!\\\quad\mathrm{when}\,\trivial(c)\\
+      \lstinline!(let $k'$ (fun ($x$) $\cps{e}{k}$) $\cps{c}{k'}$)!\\\quad\mathrm{otherwise}
+    \end{cases}$\\
+  
+    $\cps{\lstinline!(error$\;s$)!}{k}$ &= \lstinline!(error $s$)!
+  \end{tabular}
+  \end{beamerboxesrounded}
+\end{frame}
+
+\begin{frame}[fragile]{Selective Translation to CPS}
+  \begin{beamerboxesrounded}{Translation for terms left in direct style}
+    \small
+    \centering
+  \begin{tabular}{rl}
+    $\dir{x}$ &= $x$\\
+    
+    $\dir{b}$ &= $b$\\
+    
+    $\dir{\lstinline!\{$r\;x\ldots$\}!}$
+    &= \lstinline!{$r\;x\ldots$}!\\
+  
+    $\dir{\lstinline!(fun #:atomic ($x\ldots$)\ $e$)!}$
+    &= \lstinline!(fun ($x\ldots$) $\dir{e}$)!\\
+  
+    $\dir{\lstinline!(fun ($x\ldots$)\ $e$)!}$
+    &= \lstinline!(fun ($x\ldots k'$) $\cps{e}{k'}$)!\\
+  
+    $\dir{\lstinline!($f^l\;x\ldots$)!}$
+    &= $ \begin{cases}
+      \lstinline!($f$ $x\ldots$)!\\\quad\mathrm{when}\,\allAtomic(l)\\
+      \lstinline!(let $k$ (fun ($y$) $y$) ($f$ $x\ldots$ $k$))!\\\quad\mathrm{when}\,\noneAtomic(l)\\
+    \end{cases} $\\
+  
+    $\dir{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}$
+    &= \lstinline!(match $x$ ($p$ $\dir{e}$)$\ldots$)!\\
+  
+    $\dir{\lstinline!(let$\;x\;$($f^l\;y\ldots$)$\;e$)!}$
+    &= \begin{lstlisting}
+(let $k$ (fun ($z$) $z$)
+  (let $x$ ($f$ $y\ldots$ $k$))
+    $\dir{e}$)
+    \end{lstlisting}\quad when $\noneAtomic(l)$\\
+  
+    $\dir{\lstinline!(let$\;x\;c\;e$)!}$
+    &= \lstinline!(let $x$ $\dir{c}$ $\dir{e}$)!\\
+  
+    $\dir{\lstinline!(error$\;s$)!}$ &= \lstinline!(error $s$)!
+  \end{tabular}
+  \end{beamerboxesrounded}  
+\end{frame}
+
+
+\begin{frame}[fragile]{After CPS Translation}
+  \begin{lstlisting}
+(def eval (env term cont)
+  (match term
+    ([String x]
+      (let val (env x))
+      (cont val))
+    ({Abs x body}
+      (let val1
+        (fun (v cont1)
+          (let var1 (extend env x v))
+          (eval var1 body cont1)))
+      (cont val1))
+    ({App fn arg}
+      (eval env fn (fun (var2)
+        (eval env arg (fun (var3)
+          (var2 var3 cont))))))))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Selective Defunctionalization}
+  \begin{itemize}
+    \item Control flow analysis provides all the necessary information\pause
+    \item Trade-offs and gotchas
+    \begin{itemize}
+      \item Direct vs indirect calls to top-level functions\pause
+      \item Primitive operations\pause
+    \end{itemize}
+    \item Record name generation
+    \begin{itemize}
+      \item For anonymous functions: let the user decide\pause
+      \item For continuations: use the constructor of current branch (heuristic)\pause
+    \end{itemize}
+    \item Result is no longer in ANF
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Defunctionalization Annotations}
+  \begin{lstlisting}
+(def init #:no-defun (x) (error "empty environment"))
+
+(def extend (env y v)
+  (fun #no-defun (x) (match (eq? x y)
+    (#t v)
+    (#f (env x)))))
+
+(def eval (env term)
+  (match term
+    ([String x] (env x))
+    ({Abs x body} (fun #:name Fun #:apply apply (v) (eval (extend env x v) body)))
+    ({App fn arg} ((eval env fn) (eval env arg)))))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]{Selective Defunctionalization}
+  \begin{beamerboxesrounded}
+    \centering
+\begin{tabular}{rl}
+
+  $\bb{x}$ &= $ \begin{cases}
+    \lstinline!{Prim$_x$}! & \mathrm{when}\,\mathit{primOp}(x)\\
+    % x\text{is a reference to prim op}\\
+    \lstinline!{Top$_x$}!  & \mathrm{when}\,\mathit{topLevel}(x) \wedge \defun(x)\\
+    % x\text{is a reference to a top-level function which should be defunctionalized}\\
+    x & \mathrm{otherwise}
+  \end{cases} $\\
+
+  $\bb{b}$ &= $b$\\
+  
+  $\bb{\lstinline!\{$r\;x\ldots$\}!}$
+  &= \lstinline!{r $\bb{x}\ldots$}!\\
+
+  $\bb{\lstinline!(fun\ ($x\ldots$)\ $e$)$^l$!}$
+  &= $\begin{cases}
+    \lstinline!{Fun$_l$ $\mathit{fvs}(e)$}! &\text{when }\defun(l)\\
+    \lstinline!(fun ($x\ldots$) $\bb{e}$)! &\text{otherwise}
+  \end{cases}$\\
+
+  $\bb{\lstinline!(!f^{l'}\;x\ldots\lstinline!)!^l}$
+  &= $\begin{cases}
+    \lstinline!($f\;\bb{x}\ldots$)!&\text{when }\mathit{primOp}(f)\vee\\\quad\mathit{topLevel}(f)\\
+    \lstinline!(apply$_l$ $f$ $\bb{x}\ldots$)! &\text{else when }\mathit{allDefun}(l')\\
+    \lstinline!($f\;\bb{x}\ldots$)! &\text{when }\mathit{noneDefun}(l')
+  \end{cases}$\\
+
+  $\bb{\lstinline!(match$\;x\;$($p\;e$)$\ldots$)!}$
+  &= \lstinline!(match $x$ ($p$ $\bb{e}$)$\ldots$)!\\
+
+  $\bb{\lstinline!(let$\;x\;c\;e$)!}$
+  &= \lstinline!(let $x$ $\bb{c}$ $\bb{e}$)!\\
+
+  $\bb{\lstinline!(error$\;s$)!}$ &= \lstinline!(error $s$)!
+\end{tabular}
+  \end{beamerboxesrounded}  
+\end{frame}
+
+\begin{frame}[fragile]{Selective Defunctionalization}
+  \begin{beamerboxesrounded}{Apply function generation}
+    \centering
+\begingroup
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{rrl}
+  $\mkBranch(x\ldots,$&$\delta)$
+  &= \lstinline!({Prim$_\delta$} ($\delta\;x\ldots$))!\\
+
+  $\mkBranch(x\ldots,$&$\lstinline!(def $f$ ($y\ldots$) e)!)$
+  &= \lstinline!({Top$_f$} ($f$ $x\ldots$))!\\
+
+  $\mkBranch(x\ldots,$&$\lstinline!(fun ($y\ldots$) $e$)$^l$!)$
+  &= \lstinline!({Fun$_l$ $\mathit{fvs}(e)$} $\bb{e}[y\mapsto x\ldots]$)!\\
+\end{tabular}
+\begin{tabular}{rl}
+  $\mkApply(l, \mathit{fn}\ldots)$ 
+  &= \begin{lstlisting}
+(def apply$_l$ ($f$ $x\ldots$)
+  (match $f$
+    $\mkBranch(x\ldots, \mathit{fn})\ldots$))
+  \end{lstlisting}
+\end{tabular}
+\endgroup
+    
+  \end{beamerboxesrounded}
+\end{frame}
+
+\begin{frame}[fragile]{After Defunctionalization}
+  \small
+  \begin{lstlisting}
+(def eval (env term cont)
+  (match term
+    ([String x]
+      (let val (env x))
+      (continue1 cont val))
+    ({Abs x body}
+      (let val1 {Fun body env x})
+      (continue1 cont val1))
+    ({App fn arg} (eval env fn {App1 arg cont env}))))
+(def apply (fn1 v cont1)
+  (match fn1
+    ({Fun body env x}
+      (let var1 (extend env x v))
+      (eval var1 body cont1))))
+(def continue1 (fn2 var3)
+  (match fn2
+    ({App2 cont var2} (apply var2 var3 cont))
+    ({App1 arg cont env} (eval env arg {App2 cont var3}))
+    ({Halt } var3)))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}{Finishing Touches}
+  \begin{itemize}
+    \item Inline let-bindings generated by transformation\\
+    Only if the variable is used exactly once
+    \item Future work: sugar single branch matches as let bindings
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{The Result}
+  \begin{lstlisting}
+(def eval (env term cont)
+  (match term
+    ([String x] (continue1 cont (env x)))
+    ({Abs x body} (continue1 cont {Fun body env x}))
+    ({App fn arg} (eval env fn {App1 arg cont env}))))
+
+(def apply (fn1 v cont1)
+  (match fn1 ({Fun body env x} (eval (extend env x v) body cont1))))
+
+(def continue1 (fn2 var3)
+  (match fn2
+    ({App2 cont var2} (apply var2 var3 cont))
+    ({App1 arg cont env} (eval env arg {App2 cont var3}))
+    ({Halt } var3)))
+  \end{lstlisting}
+\end{frame}
+
+\begin{frame}
+  \centering
+  \LARGE{Demo: Actually Using the Tool}\\
+  \small{call-by-value normalization by evaluation}
+\end{frame}
+
+% \begin{frame}{Demo}
+%   \centering
+%   An evaluator for call-by-name \LC{}
+% \end{frame}
+
+\section{Conclusion}
+\begin{frame}{Case studies}
+  \begin{center}
+  \scriptsize
+  \begin{tabular}{c|c|c|c}
+  Language & Interpreter style & Lang. Features & Result \\ 
+  \Xhline{2\arrayrulewidth}
+  \multirow{13}{*}{\makecell{call-by-value \\ \LC{}}} & denotational & $\cdot$ & CEK machine \\
+  \cline{2-4}
+  & denotational & integers with add & CEK with add \\
+  \cline{2-4}
+  & \makecell{denotational, \\ recursion via \\ environment} & \makecell{integers, recursive \\ let-bindings} & \makecell{similar to Reynold's  \\ first-order interpreter}\\
+  \cline{2-4}
+  & \makecell{denotational \\ with conts.} & shift and reset & two layers of conts.\\
+  \cline{2-4}
+  & \makecell{denotational, \\ monadic} & \multirow{3}{*}{\makecell{exceptions \\ with handlers}} & \makecell{explicit \\ stack unwinding}\\
+  \cline{2-2}\cline{4-4}
+  & \makecell{denotational, \\ CPS} & & \makecell{pointer to\\ exception handler}\\
+  \cline{2-4}
+  & \makecell{normalization \\ by evaluation} & $\cdot$ & strong CEK machine \\
+  \hline
+  \makecell{call-by-name \\ \LC{}} & big-step & $\cdot$ & Krivine machine \\
+  \hline
+  \makecell{call-by-need \\ \LC{}} & \makecell{big-step \\ (state passing)} & memoization & lazy Krivine machine \\
+  \hline
+  \makecell{simple \\ imperative} & \makecell{big-step \\ (state passing)} & \makecell{conditionals, \\ while, assignment} & $\cdot$\\
+  \hline
+  micro-Prolog & CPS & \makecell{backtracking, \\ cut operator} & logic engine\\
+  \hline
+  \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}{Conclusion}
+  \begin{itemize}
+    \item Algorithm
+    \begin{itemize}
+      \item Fully automatic transformation
+      \item Works with interpreters expressed in a higher-order language
+      \item Allows for fine-grained control over the resulting machine
+    \end{itemize}
+    \pause
+    \item Implementation
+    \begin{itemize}
+      \item Interpreters embedded in \textit{Racket} source files
+      \item Users influence transformation using annotations
+      \item Tested on a selection of interpreters
+    \end{itemize}
+    \pause
+    \item Current work: \textit{Coq} formalization
+    \begin{itemize}
+      \item First version: encodings of natural semantics
+      \item Define transformation on a deeply embedded language
+      \item Leverage \textit{MetaCoq} library to transform to and from shallow embeddings
+    \end{itemize}
+  \end{itemize}  
+\end{frame}
+
+\begin{frame}
+  \centering
+  \huge Thank You
+\end{frame}
+
+% \begin{frame}{Case studies}
+%   \begin{center}
+%   \scriptsize
+%   \begin{tabular}{c|c|c|c}
+%   Language & Interpreter style & Lang. Features & Result \\ 
+%   \Xhline{2\arrayrulewidth}
+%   \multirow{13}{*}{\makecell{call-by-value \\ \LC{}}} & denotational & $\cdot$ & CEK machine \\
+%   \cline{2-4}
+%   & denotational & integers with add & CEK with add \\
+%   \cline{2-4}
+%   & \makecell{denotational, \\ recursion via \\ environment} & \makecell{integers, recursive \\ let-bindings} & \makecell{similar to Reynold's  \\ first-order interpreter}\\
+%   \cline{2-4}
+%   & \makecell{denotational \\ with conts.} & shift and reset & two layers of conts.\\
+%   \cline{2-4}
+%   & \makecell{denotational, \\ monadic} & \multirow{3}{*}{\makecell{exceptions \\ with handlers}} & \makecell{explicit \\ stack unwinding}\\
+%   \cline{2-2}\cline{4-4}
+%   & \makecell{denotational, \\ CPS} & & \makecell{pointer to\\ exception handler}\\
+%   \cline{2-4}
+%   & \makecell{normalization \\ by evaluation} & $\cdot$ & strong CEK machine \\
+%   \hline
+%   \makecell{call-by-name \\ \LC{}} & big-step & $\cdot$ & Krivine machine \\
+%   \hline
+%   \makecell{call-by-need \\ \LC{}} & \makecell{big-step \\ (state passing)} & memoization & lazy Krivine machine \\
+%   \hline
+%   \makecell{simple \\ imperative} & \makecell{big-step \\ (state passing)} & \makecell{conditionals, \\ while, assignment} & $\cdot$\\
+%   \hline
+%   micro-Prolog & CPS & \makecell{backtracking, \\ cut operator} & logic engine\\
+%   \hline
+%   \end{tabular}
+%   \end{center}
+% \end{frame}
+
+\end{document}
