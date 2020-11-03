@@ -69,18 +69,18 @@ Function $\anfSeq{\cdot}{\cdot}$ sequences computation of multiple expressions b
 \begingroup
 \setlength{\tabcolsep}{2pt}
 \begin{tabular}{rll}
-  $Command \ni c $ && ::= $x$ | $b$
+  $Com \ni c $ && ::= $x$ | $b$
   | \lstinline!(fun ($x\ldots$) $e$)!
   | \lstinline!($x$ $x\ldots$)!\\
   &&| \lstinline!{$r$ $x\ldots$}!
   | \lstinline!(match $x$ ($p$ $e$)$\ldots$)!\\
-  $Expression \ni e $ && ::= $c$ 
+  $Anf \ni e $ && ::= $c$ 
   | \lstinline!(let $p$ $c$ $e$)!
   | \lstinline!(error $s$)!\\
   
   % $id\,x$ &&$= x$\\
   \hline\\
-  $\bb{\cdot}$ &$\cdot$ &: $Expr \times (Com \rightarrow Anf) \rightarrow Anf$\\
+  $\bb{\cdot}$ &$\cdot$ &: $Term \times (Com \rightarrow Anf) \rightarrow Anf$\\
   $\bb{a}$ &$k$ &$= k\,a$\\
   
   $\bb{\lstinline!(fun ($x\ldots$)\ $e$)!}$ &$k$
@@ -101,11 +101,11 @@ Function $\anfSeq{\cdot}{\cdot}$ sequences computation of multiple expressions b
   $\bb{\lstinline!(error\ $s$)!}$ & \_ & $= $ \lstinline!(error $s$)!\\
 
   \hline\\
-  $[\cdot]_a$ & $\cdot$ & : $(Atomic \rightarrow Anf) \rightarrow Com \rightarrow Anf$\\
-  $[k]_a$ & $a$ & $= k\,a$\\
+  $[\cdot]_a$ & $\cdot$ & : $(Var \rightarrow Anf) \rightarrow Com \rightarrow Anf$\\
+  $[k]_a$ & $x$ & $= k\,x$\\
   $[k]_a$ & $c$ & $= $ \lstinline!(let $x$ $c$ $(k\,x)$)!\\
   \hline\\
-  $\bb{\cdot}_s$ & $\cdot$ &: $Expr^* \times (Atomic^* \rightarrow Anf) \rightarrow Anf$\\
+  $\bb{\cdot}_s$ & $\cdot$ &: $Term^* \times (Var^* \rightarrow Anf) \rightarrow Anf$\\
   $\bb{e\ldots}_s$ & $k$ & $= \bb{e\ldots}_s^{\epsilon}$\\
   $\bb{\epsilon}_s^{a\ldots}$ & $k$ & $= k\,(a\ldots)$\\
   $\bb{e\,e_r\ldots}_s^{a_{acc}\ldots}$ & $k$ & 
@@ -361,7 +361,7 @@ The algorithm consists of two mutually recursive transformations: $\cps{e}{k}$ i
   
     $\cps{\lstinline!(let$\;x\;c\;e$)!}{k} $
     &= $ \begin{cases}
-      \lstinline!(let $x$ $\dir{d}$ $\cps{e}{k}$)! &\mathrm{when}\,\trivial(c)\\
+      \lstinline!(let $x$ $\dir{c}$ $\cps{e}{k}$)! &\mathrm{when}\,\trivial(c)\\
       \lstinline!(let $k'$ (fun ($x$) $\cps{e}{k}$) $\cps{c}{k'}$)! &\mathrm{otherwise}
     \end{cases}$\\
   

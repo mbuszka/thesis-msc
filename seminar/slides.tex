@@ -91,12 +91,18 @@
 \title[The Functional Correspondence Applied]{The Functional Correspondence Applied:\\ An Implementation of a Semantics Transformer}
 \author[Maciej Buszka]{Maciej Buszka}
 \institute[II UWr]{Instytut Informatyki UWr}
-\date{22.10.2020}
+\date{05.11.2020}
 
 \begin{document}
 
 \begin{frame}
   \titlepage
+\end{frame}
+
+\begin{frame}
+  \centering
+  \LARGE{The Functional Correspondence}\\
+  \tiny{and an introduction to the meta-language}
 \end{frame}
 
 % \begin{frame}{Outline}
@@ -109,8 +115,8 @@
   \begin{itemize}
     \item A method for deriving abstract machines\pause
     \item Takes a definitional interpreter
-    \item Produces an encoding of abstract machine\pause
-    \item Introduced by Danvy et. al. in \textit{A functional correspondence between evaluators and abstract machines}
+    \item Produces an encoding of an abstract machine\pause
+    \item Introduced by Danvy et~al. in \textit{A functional correspondence between evaluators and abstract machines}
     \pause
     \item Based on two source-to-source transformations
     \begin{itemize}
@@ -410,7 +416,8 @@
     \item Provide finite approximations for base types
     \item Let the store map to sets of value approximations\pause
     \item Compute the set of configurations reachable from the initial one\pause
-    \item Now for every variable in function position the store contains a set of values to which it may evaluate.
+    \item Now for every variable in function position the store contains a set of values to which it may evaluate\pause
+    \item Methodology introduced by Van Horn et~al. in \textit{Abstracting Abstract Machines}
   \end{itemize}
 \end{frame}
 
@@ -771,8 +778,11 @@
 \end{frame}
 
 \begin{frame}
-  \centering
-  \huge Thank You
+  \begin{itemize}
+    \item Reynolds: \textit{Definitional Interpreters for Higher-Order Programming Languages}
+    \item Ager, Biernacki, Danvy and Midtgaard: \textit{A functional correspondence between evaluators and abstract machines}
+    \item Van Horn and Might: \textit{Abstracting abstract machines}
+  \end{itemize}
 \end{frame}
 
 % \begin{frame}{Case studies}

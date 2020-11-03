@@ -198,7 +198,7 @@
     \begin{itemize}
       \item Transform anonymous function definitions into records holding the free variables
       \item Generate top-level function which matches the records and evaluates the bodies
-      \item Transform applications of functions in the space into a call to the top-level function
+      \item Transform applications of functions in the space into a call to the~top-level function
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -253,7 +253,7 @@
 
 \begin{frame}{Control-flow Analysis}
   \begin{itemize}
-    \item For each expression in a program, find the over-approximation of the set of functions it may evaluate to
+    \item For each expression in a program, find the over-approximation of~the~set of functions it may evaluate to
     \item Exactly matches requirements of defunctionalization
     \pause
     \item Textbook approaches
@@ -273,7 +273,7 @@
       \item Easy to adapt various language features
     \end{itemize}
     \item Results of analysis fit the functional correspondence well
-    \item Reasonable running time on small (100 lines) interpreters even with very naive implementation
+    \item Reasonable running time on small (100 lines) interpreters even with~very naive implementation
   \end{itemize}
 \end{frame}
 
@@ -300,7 +300,7 @@
       \item Functions in direct style may call CPS ones and vice versa
     \end{itemize}
     \item Uses control-flow analysis to guide transformation of applications
-    \item Beneficial in practice -- machine is not cluttered with control flow of helper functions
+    \item Beneficial in practice -- machine is not cluttered with control flow of~helper functions
   \end{itemize}
 \end{frame}
 

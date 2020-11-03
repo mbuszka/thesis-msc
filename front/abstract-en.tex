@@ -4,6 +4,7 @@ This thesis presents a robust algorithm for automatically deriving an abstract m
 The transformation is based on a manual derivation technique known as the functional correspondence between evaluators and abstract machines which consists of two source code transformations: translation to continuation-passing style which uncovers the control flow of the interpreter  and defunctionalization which produces a first-order program.
 
 The algorithm begins with the translation to administrative normal form which eases program analysis and the subsequent steps of the transformation: selective translation to continuation-passing style and selective defunctionalization.
+% ... to automatically
 Both transformations extend their classical formulations with the ability to transform only the desired parts of the program by utilizing the control-flow analysis which is computed by an abstract interpreter obtained using the abstracting abstract machines methodology.
 
 The thesis is accompanied by an implementation of the algorithm in the form of a command-line tool.
