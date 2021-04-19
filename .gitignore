@@ -1,2 +1,8 @@
-thesis.run.xml
-thesis.bbl
+**/*.synctex.gz
+**/*.bbl
+**/*.run.xml
+**/*.snm
+**/*.nav
+**/*.vrb
+doc/*
+**/interpreters/out

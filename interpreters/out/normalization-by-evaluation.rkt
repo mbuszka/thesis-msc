@@ -24,7 +24,7 @@
   (fun (n)
     (match n
       (0 val)
-      (_ (env (- n 1))))))
+    (_ (env (- n 1))))))
 
 (def reify (ceil val cont)
   (match val
@@ -43,18 +43,7 @@
     ({App f arg} (eval f env {App3 arg cont2 env}))
     ({Abs body} (continue cont2 {Fun {Closure body env}}))))
 
-(def run (term cont4) (eval term (fun (x) (error "empty env")) {Cont cont4 0}))
-
-(def apply1 (fn x cont3)
-  (match fn ({Closure body env} (eval body (cons x env) cont3))))
-
-(def continue1 (fn1 var11)
-  (match fn1
-    ({Fun2 cont} (continue1 cont {Abs var11}))
-    ({App2 cont var10} (continue1 cont {App var10 var11}))
-    ({App1 arg ceil cont} (reify ceil arg {App2 cont var11}))
-    ({Halt } var11)))
-
+;; evaluation
 (def continue (fn2 var13)
   (match fn2
     ({Fun1 cont var3} (reify var3 var13 {Fun2 cont}))
@@ -62,8 +51,20 @@
     ({App3 arg cont2 env} (eval arg env {App4 cont2 var13}))
     ({Cont cont4 var16} (reify var16 var13 cont4))))
 
-(def main ([Term term]) (run term {Halt }))
+(def run (term cont4) (eval term (fun (x) (error "empty env")) {Cont cont4 0}))
 
+(def apply1 (fn x cont3)
+  (match fn ({Closure body env} (eval body (cons x env) cont3))))
+
+;; reification
+(def continue1 (fn1 var11)
+  (match fn1
+    ({Fun2 cont} (continue1 cont {Abs var11}))
+    ({App2 cont var10} (continue1 cont {App var10 var11}))
+    ({App1 arg ceil cont} (reify ceil arg {App2 cont var11}))
+    ({Halt } var11)))
+
+(def main ([Term term]) (run term {Halt }))
 ; end interpreter
 
 (module+ test
